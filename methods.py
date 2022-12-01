@@ -1,4 +1,16 @@
 import math
+import numpy as np
+
+# Line Search Methods
+# Algorithm 3.1.- Backtracking Line Search
+# Nocedal & Wright (2006), Numerical Optimization
+def backtracking(fun,grad,xk,pk,alpha,rho,c):
+    alpha_k = alpha
+    fk = fun(xk)
+    gk = grad(xk)
+    while fun(xk + alpha_k * pk) > fk + c*alpha_k*(np.matmul(gk.T, pk)):
+        alpha_k = rho * alpha_k
+    return alpha_k
 
 def golden_search(start_interval, find_interval_size, eps, fun):
     rho = 0.381966011
@@ -30,3 +42,17 @@ def golden_search(start_interval, find_interval_size, eps, fun):
         if (b0-a0) <= eps:
             break
     return a0, b0, N
+
+def steepest_descend(fun, grad, lda, x0, eps, N):
+    x = x0
+    k = 0
+    gk = grad(x)
+    lk = lda(gk)
+    nk = np.linalg.norm(gk)
+    while nk >= eps and k <= N:
+        x = x - np.matmul(lk, gk)
+        f = fun(x)
+        gk = grad(x)
+        lk = lda(gk)
+        nk = np.linalg.norm(gk)
+        k = k + 1
