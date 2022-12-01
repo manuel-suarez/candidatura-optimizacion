@@ -85,16 +85,14 @@ def golden_search(start_interval, find_interval_size, eps, fun):
             break
     return a0, b0, N
 
-def steepest_descend(fun, grad, lda, x0, eps, N):
-    x = x0
-    k = 0
-    gk = grad(x)
-    lk = lda(gk)
-    nk = np.linalg.norm(gk)
-    while nk >= eps and k <= N:
-        x = x - np.matmul(lk, gk)
-        f = fun(x)
-        gk = grad(x)
-        lk = lda(gk)
-        nk = np.linalg.norm(gk)
+def steepest_descend(fun, grad, x0, eps, K):
+    xk = x0
+    while np.linalg.norm(grad(xk)) >= eps and k <= K:
+        # Dirección de descenso
+        gk = -grad(xk)
+        # Line search with backtracking
+        alphak = backtracking(fun, grad, xk, gk, 1, 0.5, 0.1)
+        # Actualizamos posición
+        xk = xk + alphak * gk
         k = k + 1
+    return xk
