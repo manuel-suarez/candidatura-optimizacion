@@ -7,10 +7,11 @@ import numpy as np
 def backtracking(fun,grad,xk,pk):
     alpha_k = 1
     rho = 0.5
-    c = 0.1
+    c1 = 10e-4
     fk = fun(xk)
     gk = grad(xk)
-    while fun(xk + alpha_k * pk) > fk + c*alpha_k*(gk.T @ pk):
+    # Condición de Armijo
+    while fun(xk + alpha_k * pk) > fk + c1*alpha_k*(gk.T @ pk):
         alpha_k = rho * alpha_k
     return alpha_k
 
