@@ -4,11 +4,13 @@ import numpy as np
 # Line Search Methods
 # Algorithm 3.1.- Backtracking Line Search
 # Nocedal & Wright (2006), Numerical Optimization
-def backtracking(fun,grad,xk,pk,alpha,rho,c):
-    alpha_k = alpha
+def backtracking(fun,grad,xk,pk):
+    alpha_k = 1
+    rho = 0.5
+    c = 0.1
     fk = fun(xk)
     gk = grad(xk)
-    while fun(xk + alpha_k * pk) > fk + c*alpha_k*(np.matmul(gk.T, pk)):
+    while fun(xk + alpha_k * pk) > fk + c*alpha_k*(gk.T @ pk):
         alpha_k = rho * alpha_k
     return alpha_k
 
@@ -86,13 +88,21 @@ def golden_search(start_interval, find_interval_size, eps, fun):
     return a0, b0, N
 
 def steepest_descend(fun, grad, x0, eps, K):
+    k = 0
     xk = x0
+    history = np.zeros((1, 2))  # storing x values
+    history[0, :] = xk
     while np.linalg.norm(grad(xk)) >= eps and k <= K:
         # Dirección de descenso
-        gk = -grad(xk)
+        pk = -grad(xk)
         # Line search with backtracking
-        alphak = backtracking(fun, grad, xk, gk, 1, 0.5, 0.1)
+        alphak = backtracking(fun, grad, xk, pk)
         # Actualizamos posición
-        xk = xk + alphak * gk
+        xk = xk + alphak * pk
+        # Guardamos en historial
+        history = np.append(history, [xk], axis=0)  # storing x
+        # Imprimimos iteración
+        print(f"Iteración: {k}, alpha: {alphak}")
+        # Siguiente iteración
         k = k + 1
-    return xk
+    return history
