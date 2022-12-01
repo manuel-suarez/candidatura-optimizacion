@@ -102,7 +102,36 @@ def steepest_descend(fun, grad, x0, eps, K):
         # Guardamos en historial
         history = np.append(history, [xk], axis=0)  # storing x
         # Imprimimos iteración
-        print(f"Iteración: {k}, alpha: {alphak}")
+        # print(f"Iteración: {k}, alpha: {alphak}")
         # Siguiente iteración
         k = k + 1
     return history
+
+# Algorithm 6.1 BFGS Method
+# Nocedal & Wright (2006), Numerical Optimization, pp. 140
+def bfgs(fun, grad, x0, H0, eps, K):
+    k = 0
+    xk = 0
+    I = np.eye(len(x0))
+    Hk = H0.clone()
+    gk = grad(xk)
+    while np.linalg.norm(gk) > eps and k <= K:
+        # Compute search direction
+        pk = -Hk @ gk
+        # Line search
+        # TODO reemplazar por line_search
+        alphak = backtracking(fun, grad, xk, pk)
+        # Update xk
+        xkp1 = xk + alphak * pk
+        gkp1 = grad(xkp1)
+        # Vectores de curvatura
+        sk = xkp1 - xk
+        yk = gkp1 - gk
+        # Actualizamos Hk+1 con (6.17)
+        rho_k = 1 / (yk.T @ sk)
+        Hk = (I - rho_k*(sk@yk.T)) @ Hk @ (I - rho_k*(yk@sk.T)) + rho_k*(sk@sk.T)
+        # Siguiente iteración
+        xk = xkp1
+        gk = gkp1
+        k = k + 1
+    return xk
