@@ -12,6 +12,28 @@ def backtracking(fun,grad,xk,pk,alpha,rho,c):
         alpha_k = rho * alpha_k
     return alpha_k
 
+# Algorithm 3.5.- Line Search Algorithm
+# Nocedal & Wright (2006, Numerical Optimization, pp. 60
+def line_search(phi,phi_grad,alpha_max,alpha_1,c1,c2):
+    alpha_i = 0
+    alpha_im1 = 0
+    i = 1
+    while True:
+        phi_alpha_i = phi(alpha_i)
+        if (phi_alpha_i > phi(0) + c1*alpha_i*phi_grad(0)) or (i > 1 and phi_alpha_i >= phi(alpha_im1)):
+            alpha_s = zoom(alpha_im1, alpha_i)
+            break
+        phi_grad_alpha_i = phi_grad(alpha_i)
+        if np.abs(phi_grad_alpha_i) <= -c2*phi_grad(0):
+            alpha_s = alpha_i
+            break
+        if phi_grad_alpha_i >= 0:
+            alpha_s = zoom(alpha_i, alpha_im1)
+            break
+        alpha_i = (alpha_i + alpha_max) / 2
+        i = i + 1
+    return alpha_s
+
 def golden_search(start_interval, find_interval_size, eps, fun):
     rho = 0.381966011
 
