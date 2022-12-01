@@ -17,9 +17,14 @@ def backtracking(fun,grad,xk,pk):
 
 # Algorithm 3.5.- Line Search Algorithm
 # Nocedal & Wright (2006, Numerical Optimization, pp. 60
-def line_search(phi,phi_grad,alpha_max,alpha_1,c1,c2):
-    alpha_i = 0
-    alpha_im1 = 0
+def line_search(fun,grad,xk,pk,alpha_max,c1,c2):
+    def phi(alpha):
+        return fun(xk + alpha*pk)
+    def phi_grad(alpha):
+        return pk.T @ grad(xk + alpha*pk)
+    alpha_0 = 0
+    alpha_1 = (alpha_0 + alpha_max) / 2
+    alpha_im1 = alpha_1
     i = 1
     while True:
         phi_alpha_i = phi(alpha_i)
@@ -88,6 +93,7 @@ def golden_search(start_interval, find_interval_size, eps, fun):
             break
     return a0, b0, N
 
+# Nocedal & Wright (2006), Numerical Optimization
 def steepest_descend(fun, grad, x0, eps, K):
     k = 0
     xk = x0
