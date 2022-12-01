@@ -21,17 +21,37 @@ def line_search(phi,phi_grad,alpha_max,alpha_1,c1,c2):
     while True:
         phi_alpha_i = phi(alpha_i)
         if (phi_alpha_i > phi(0) + c1*alpha_i*phi_grad(0)) or (i > 1 and phi_alpha_i >= phi(alpha_im1)):
-            alpha_s = zoom(alpha_im1, alpha_i)
+            alpha_s = zoom(phi, phi_grad, alpha_im1, alpha_i, c1, c2)
             break
         phi_grad_alpha_i = phi_grad(alpha_i)
         if np.abs(phi_grad_alpha_i) <= -c2*phi_grad(0):
             alpha_s = alpha_i
             break
         if phi_grad_alpha_i >= 0:
-            alpha_s = zoom(alpha_i, alpha_im1)
+            alpha_s = zoom(phi, phi_grad, alpha_i, alpha_im1, c1, c2)
             break
         alpha_i = (alpha_i + alpha_max) / 2
         i = i + 1
+    return alpha_s
+
+# Algorithm 3.6.- Zoom
+# Nocedal & Wright (2006, Numerical Optimization, pp. 61
+def zoom(phi, phi_grad, alpha_lo, alpha_hi, c1, c2):
+    alpha_s = 0
+    while True:
+        # Interpolación
+        alpha_j = (alpha_lo + alpha_hi) / 2
+        phi_alpha_j = phi(alpha_j)
+        if (phi_alpha_j > phi(0) + c1*alpha_j*phi_grad(0)) or (phi_alpha_j >= phi(alpha_lo)):
+            alpha_hi = alpha_j
+        else:
+            phi_grad_alpha_j = phi_grad(alpha_j)
+            if np.abs(phi_grad_alpha_j) <= -c2*phi_grad(0):
+                alpha_s = alpha_j
+                break
+            if phi_grad_alpha_j*(alpha_hi - alpha_lo) >= 0:
+                alpha_hi = alpha_lo
+            alpha_lo = alpha_j
     return alpha_s
 
 def golden_search(start_interval, find_interval_size, eps, fun):
