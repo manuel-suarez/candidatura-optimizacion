@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import scipy.optimize as op
 
 # Line Search Methods
 # Algorithm 3.1.- Backtracking Line Search
@@ -97,15 +98,18 @@ def golden_search(start_interval, find_interval_size, eps, fun):
 def steepest_descend(fun, grad, x0, eps, K):
     k = 0
     xk = x0
+    gk = grad(xk)
     history = np.zeros((1, 2))  # storing x values
     history[0, :] = xk
-    while np.linalg.norm(grad(xk)) >= eps and k <= K:
+    while np.linalg.norm(gk) >= eps and k <= K:
         # Dirección de descenso
-        pk = -grad(xk)
+        pk = -gk / np.linalg.norm(gk)
         # Line search with backtracking
-        alphak = backtracking(fun, grad, xk, pk)
+        alphak = op.line_search(fun, grad, xk, pk)[0]
+        print(xk.shape, pk.shape, alphak)
         # Actualizamos posición
         xk = xk + alphak * pk
+        gk = grad(xk)
         # Guardamos en historial
         history = np.append(history, [xk], axis=0)  # storing x
         # Imprimimos iteración
@@ -126,8 +130,7 @@ def bfgs(fun, grad, x0, H0, eps, K):
         # Compute search direction
         pk = -Hk @ gk
         # Line search
-        # TODO reemplazar por line_search
-        alphak = backtracking(fun, grad, xk, pk)
+        alphak = op.line_search(fun, grad, xk, pk)
         # Update xk
         xkp1 = xk + alphak * pk
         gkp1 = grad(xkp1)
@@ -142,3 +145,112 @@ def bfgs(fun, grad, x0, H0, eps, K):
         gk = gkp1
         k = k + 1
     return xk
+
+# Algorithm 6.2 SR1 Trust-Region Method
+# Nocedal & Wright (2006), Numerical Optimization, pp. 146
+def SR1_TR(fun, grad, x0, B0, delta_0, eps, K):
+    eta = 0.75
+    r = 10e-8
+    k = 0
+    xk = x0
+    fk = fun(xk)
+    gk = grad(xk)
+    delta_k = delta_0
+    Bk = B0
+    while np.linalg.norm(gk) > eps:
+        # Solve the subproblem to find step and descend direction
+        sk = solve()
+        # Actualize difference of gradientes
+        yk = grad(xk + sk)
+        # Calculate reduction rate
+        ared = fk - fun(xk + sk)
+        pred = -(gk.T @ sk + 0.5*(sk.T @ Bk @ sk))
+        reduc_rate = ared/pred
+        # Increase/decrease trust region
+        if reduc_rate > eta:
+            xk1 = xk + sk
+        else:
+            xk1 = xk
+        if reduc_rate > 0.75:
+            if np.linalg.norm(sk) <= 0.85 * delta_k:
+                delta_k1 = delta_k
+            else:
+                delta_k1 = 2 * delta_k
+        else:
+            if 0.1 <= reduc_rate and reduc_rate <= 0.75:
+                delta_k1 = delta_k
+            else:
+                delta_k1 = 0.5 * delta_k
+        # Actualize estimate of Hessian accord to SR1 update formula
+        tmp = (yk - (Bk @ sk))
+        if np.abs(sk.T @ tmp) >= r*np.linalg.norm(sk)*np.linalg.norm(tmp):
+            Bk = Bk + (tmp @ tmp.T) / (tmp.T @ sk)
+        k = k + 1
+
+# Algorithm 1: L-SR1 Trust-Region (L-SR1-TR)
+# Erway, et. al. (2019)
+# TRUST-REGION ALGORITHMS FOR TRAINING RESPONSES:
+# MACHINE LEARNING METHODS USING INDEFINITE
+# HESSIAN APPROXIMATIONS
+# pp. 8
+def L_SR1_TR(fun, grad, x0, delta0, eps, gm0, tau1, tau2, tau3, eta1, eta2, eta3, eta4, alpha = 1, N = 10000):
+    # 1.- Compute g0
+    g0 = grad(x0)
+    xk = x0
+    gk = g0
+    gmk = gm0
+    deltak = delta0
+    # 2.- For k = 0,1,2,... do
+    for k in range(N):
+        # 3-5.- If ||gk|| < eps return
+        if np.linalg.norm(gk) <= eps:
+            # Terminamos el ciclo
+            break
+        # 6.- Choose at most m pairs {sj, yj}
+
+        # 7.- Compute p* using Algorithm 2
+        pstar = Orthonormal_Basis_SR1()
+        # 8.- Compute step-size alpha with Wolfe line-search on p*. Set p* = alpha*p*
+        alpha = Wolfe_Linesearch()
+        pstar = alpha*pstar
+        # 9.- Compute the ratio rhok = (f(wk+p*)-f(wk))/Qk(p*)
+        rhok = (fun(xk + pstar) - fun(xk)) / Q(pstar) # TODO Analizar qué es la expresión Q en el algoritmo
+        # 10.- wk+1 = wk + p*
+        xk1 = xk + pstar
+        # 11.- Compute gk+1, sk, yk and gammak
+        gk1 = grad(xk1)
+        sk = xk1 - xk
+        yk = gk1 - gk
+        gmk = gm0 # TODO Analizar cómo se actualiza gamma_k
+        # Ajuste de la región de confianza
+        # 12.-
+        if rhok < tau2:
+            # 13.-
+            deltak = np.min(eta1*deltak, eta2*np.linalg.norm(sk))
+        else:
+            # 15.-
+            if rhok >= tau3 and np.linalg.norm(sk) >= eta3*deltak:
+                # 16.-
+                deltak = eta4*deltak
+            else:
+                # 18.-
+                pass # deltak = deltak (no se actualiza)
+        # Actualizamos cálculos
+        xk = xk1
+        fk = fun(xk)
+        gk = grad(xk)
+    # Finalizamos con retorno del valor mínimo encontrado
+    return xk, fk, gk
+
+# Algorithm 2: Orthonormal Basis SR1 Method
+def Orthonormal_Basis_SR1(Yk, B0, Sk):
+    Psik = Yk - B0 @ Sk
+    # 1.- Compute the Cholesky factor R of Psi' * Psi
+    R = np.linalg.cholesky(Psik.T @ Psik)
+    # Requerimos construir la matriz M para el paso siguiente
+    M = ()
+    # 2.- Compute the spectral decomposition R*M*R' = U*Â*U' (solo usamos los eingenvalores)
+    A = np.linalg.eig(R @ (M @ R.T))
+
+def Wolfe_Linesearch():
+    pass
