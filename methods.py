@@ -1,4 +1,6 @@
 import math
+from typing import List, Any
+
 import numpy as np
 import scipy.optimize as op
 
@@ -105,8 +107,7 @@ def steepest_descend(fun, grad, x0, eps, K):
         # Dirección de descenso
         pk = -gk / np.linalg.norm(gk)
         # Line search with backtracking
-        alphak = op.line_search(fun, grad, xk, pk)[0]
-        print(xk.shape, pk.shape, alphak)
+        alphak = backtracking(fun, grad, xk, pk)
         # Actualizamos posición
         xk = xk + alphak * pk
         gk = grad(xk)
@@ -122,15 +123,17 @@ def steepest_descend(fun, grad, x0, eps, K):
 # Nocedal & Wright (2006), Numerical Optimization, pp. 140
 def bfgs(fun, grad, x0, H0, eps, K):
     k = 0
-    xk = 0
+    xk = x0
     I = np.eye(len(x0))
-    Hk = H0.clone()
+    Hk = H0.copy()
     gk = grad(xk)
+    history = np.zeros((1, 2))  # storing x values
+    history[0, :] = xk
     while np.linalg.norm(gk) > eps and k <= K:
         # Compute search direction
         pk = -Hk @ gk
         # Line search
-        alphak = op.line_search(fun, grad, xk, pk)
+        alphak = op.line_search(fun, grad, xk, pk)[0]
         # Update xk
         xkp1 = xk + alphak * pk
         gkp1 = grad(xkp1)
@@ -143,8 +146,60 @@ def bfgs(fun, grad, x0, H0, eps, K):
         # Siguiente iteración
         xk = xkp1
         gk = gkp1
+        history = np.append(history, [xk], axis=0)  # storing x
         k = k + 1
-    return xk
+    return history
+
+# Algorithm 7.5 L-BFGS Method
+# Nocedal & Wright (2006), Numerical Optimization, pp. 179
+def lbfgs(fun, grad, x0, m, eps, K):
+    k = 0
+    xk = x0
+    gk = grad(xk)
+    si = []
+    yi = []
+    history = np.zeros((1, 2))  # storing x values
+    history[0, :] = xk
+    while np.linalg.norm(gk) > eps and k <= K:
+        # Choose H_k^0 using 7.20
+        if k == 0:
+            Hk0 = np.eye(len(x0))
+        else:
+            gammak = (si[-1].T @ si[-1]) / (yi[-1].T @ yi[-1])
+            Hk0 = gammak * np.eye(len(x0))
+        # Compute pk from Algorithm 7.4
+        pk = -lbfgs_two_loop(gk, k, m, Hk0, si, yi)
+        # Compute alpha_k satisfying Wolfe conditions
+        alphak = op.line_search(fun, grad, xk, pk)[0]
+        xk1 = xk + alphak * pk
+        gk1 = grad(xk1)
+        if k > m:
+            # Discard pair {sk-m, yk-m} from storage (discard first element)
+            si.pop(0)
+            yi.pop(0)
+        sk = xk1 - xk
+        yk = gk1 - gk
+        si.append(sk)
+        yi.append(yk)
+        xk = xk1
+        history = np.append(history, [xk], axis=0)  # storing x
+        gk = gk1
+    return history
+
+# Algorithm 7.4 L-BFGS two-loop recursion
+def lbfgs_two_loop(gk, k, m, Hk, si, yi):
+    q = gk
+    alpha = np.zeros(len(si))
+    for i in range(len(si)-1, -1, -1):
+        rho = 1/(yi[i].T @ si[i])
+        alpha[i] = rho * (si[i].T @ q)
+        q = q - alpha[i] * yi[i]
+    r = Hk @ q
+    for i in range(len(si)):
+        rho = 1 / (yi[i].T @ si[i])
+        beta = rho * (yi[i].T @ r)
+        r = r + si[i] * (alpha[i] - beta)
+    return r
 
 # Algorithm 6.2 SR1 Trust-Region Method
 # Nocedal & Wright (2006), Numerical Optimization, pp. 146
@@ -159,6 +214,7 @@ def SR1_TR(fun, grad, x0, B0, delta_0, eps, K):
     Bk = B0
     while np.linalg.norm(gk) > eps:
         # Solve the subproblem to find step and descend direction
+        # TODO implementar TR search
         sk = solve()
         # Actualize difference of gradientes
         yk = grad(xk + sk)
