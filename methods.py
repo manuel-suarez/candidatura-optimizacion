@@ -208,19 +208,21 @@ def SR1_TR(fun, grad, x0, B0, delta_0, eps, K):
     r = 10e-8
     k = 0
     xk = x0
+    history = np.zeros((1, 2))  # storing x values
+    history[0, :] = xk
     fk = fun(xk)
     gk = grad(xk)
     delta_k = delta_0
     Bk = B0
-    while np.linalg.norm(gk) > eps:
+    while np.linalg.norm(gk) > eps and k <= K:
         # Solve the subproblem to find step and descend direction
-        # TODO implementar TR search
-        sk = solve()
+        sk = solve(gk, Bk, delta_k)
+        #sk = solve2(1, delta_k, gk, Bk, np.eye(len(xk)), 3)
         # Actualize difference of gradientes
-        yk = grad(xk + sk)
+        yk = grad(xk + sk) - gk
         # Calculate reduction rate
         ared = fk - fun(xk + sk)
-        pred = -(gk.T @ sk + 0.5*(sk.T @ Bk @ sk))
+        pred = -(gk.T @ sk + 0.5*(sk.T @ (Bk @ sk)))
         reduc_rate = ared/pred
         # Increase/decrease trust region
         if reduc_rate > eta:
@@ -228,7 +230,7 @@ def SR1_TR(fun, grad, x0, B0, delta_0, eps, K):
         else:
             xk1 = xk
         if reduc_rate > 0.75:
-            if np.linalg.norm(sk) <= 0.85 * delta_k:
+            if np.linalg.norm(sk) <= 0.8 * delta_k:
                 delta_k1 = delta_k
             else:
                 delta_k1 = 2 * delta_k
@@ -238,10 +240,48 @@ def SR1_TR(fun, grad, x0, B0, delta_0, eps, K):
             else:
                 delta_k1 = 0.5 * delta_k
         # Actualize estimate of Hessian accord to SR1 update formula
-        tmp = (yk - (Bk @ sk))
+        tmp = (yk - (Bk @ sk)) # To calculate 6.26
+        # If (6.26) holds
         if np.abs(sk.T @ tmp) >= r*np.linalg.norm(sk)*np.linalg.norm(tmp):
+            # Use (6.24) to compute Bk+1 (even if xk+1 = xk)
             Bk = Bk + (tmp @ tmp.T) / (tmp.T @ sk)
+        # Actualizamos variable para siguiente iteración
+        delta_k = delta_k1
+        xk = xk1
+        fk = fun(xk)
+        gk = grad(xk)
+        history = np.append(history, [xk], axis=0)  # storing x
         k = k + 1
+    return history
+
+# Algorithm 4.2 Cauchy Point Calculation (To solve the TR subproblem of 6.2)
+# Nocedal & Wright (2006), Numerical Optimization, pp. 71
+def solve(gk, Bk, delta_k):
+    ngk = np.linalg.norm(gk)
+    p_s_k = - delta_k * (gk / ngk)
+    gkT_Bk_gk = gk.T @ (Bk @ gk)
+    if gkT_Bk_gk <= 0:
+        tau_k = 1
+    else:
+        tau_k = min( ((ngk**3)/(delta_k*gkT_Bk_gk)) , 1)
+    p_c_k = tau_k * p_s_k
+    return p_c_k
+
+# Algorithm 4.3 Trust Region Subproblem (To solve the TR subproblem of 6.2)
+# Nocedal & Wright (2006), Numerical Optimization, pp. 87
+def solve2(lambda_0, delta_k, g_k, B_k, I, iterations):
+    lambda_l = lambda_0
+    for l in range(iterations):
+        # Factor B + lambda * I = Rt @ R
+        R = np.linalg.cholesky(B_k + lambda_l * I)
+        # Solve Rt @ R @ p_l = -g, Rt @ q_l = p_l
+        p_l = np.linalg.solve(R.T @ R, -g_k)
+        q_l = np.linalg.solve(R.T, p_l)
+        # Set (4.44)
+        np_l = np.linalg.norm(p_l)
+        nq_l = np.linalg.norm(q_l)
+        lambda_l = lambda_l + ((np_l/nq_l)**2) * ((np_l-delta_k)/delta_k)
+    return p_l
 
 # Algorithm 1: L-SR1 Trust-Region (L-SR1-TR)
 # Erway, et. al. (2019)

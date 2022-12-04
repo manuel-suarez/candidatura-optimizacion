@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from autograd import grad
 from functions import rosenbrock2d
-from methods import steepest_descend, bfgs, lbfgs
+from methods import steepest_descend, bfgs, lbfgs, SR1_TR
 
 rosenbrock2d_grad = grad(rosenbrock2d)
 x1 = np.linspace(- 0.5, + 0.5, 30)
@@ -17,15 +17,19 @@ plt.xlabel('$x_1$');
 plt.ylabel('$x_2$')
 plt.show()
 
-x0 = np.array([-1.2,1])
-#history = steepest_descend(rosenbrock2d, rosenbrock2d_grad, x0, eps=1e-3, K=10000)
-#plt.plot(x_store[:,0],x_store[:,1],c='w')
-#print(f"El mínimo de la función es: {history[-1]}, en {len(history)} pasos")
+if False:
+    x0 = np.array([-1.2,1])
+    history = steepest_descend(rosenbrock2d, rosenbrock2d_grad, x0, eps=1e-3, K=10000)
+    print(f"El mínimo de la función es: {history[-1]}, en {len(history)} pasos")
+
+    x0 = np.array([-1.2,1])
+    history = bfgs(rosenbrock2d, rosenbrock2d_grad, x0, np.eye(len(x0)), eps=1e-5, K=10000)
+    print(f"El mínimo de la función es: {history[-1]}, en {len(history)} pasos")
+
+    x0 = np.array([-1.2,1])
+    history = lbfgs(rosenbrock2d, rosenbrock2d_grad, x0, 5, eps=1e-5, K=10000)
+    print(f"El mínimo de la función es: {history[-1]}, en {len(history)} pasos")
 
 x0 = np.array([-1.2,1])
-history = bfgs(rosenbrock2d, rosenbrock2d_grad, x0, np.eye(len(x0)), eps=1e-5, K=10000)
-print(f"El mínimo de la función es: {history[-1]}, en {len(history)} pasos")
-
-x0 = np.array([-1.2,1])
-history = lbfgs(rosenbrock2d, rosenbrock2d_grad, x0, 5, eps=1e-5, K=10000)
+history = SR1_TR(rosenbrock2d, rosenbrock2d_grad, x0, np.eye(len(x0)), delta_0=1, eps=1e-5, K=10000)
 print(f"El mínimo de la función es: {history[-1]}, en {len(history)} pasos")
