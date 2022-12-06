@@ -1,9 +1,11 @@
 import numpy as np
+import scipy as sp
 
 # Definimos algunas variables para acortar los nombres de funciones
 NORM = np.linalg.norm
 CHOL = np.linalg.cholesky
-EIG  = np.linalg.eig
+RANK = np.linalg.matrix_rank
+EIG  = sp.linalg.eig # To solve generalized eigenvalues problem
 INV  = np.linalg.inv
 
 # Algorithm 1: L-SR1 Trust-Region (L-SR1-TR) Method
@@ -50,7 +52,7 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     nIter       = gd_params['nIter']
     numIter     = gd_params['numIter']
     batch_size  = gd_params['batch_size']
-    mmr         = gd_params['mmr']
+    mem_size    = gd_params['mem_size']
     delta_0	    = gd_params['delta_0']
     eps	        = gd_params['eps']
     gamma_0	    = gd_params['gamma_0']
@@ -65,64 +67,103 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     mu	        = gd_params['mu']
     # Variables para el muestreo aleatorio de los lotes (batch size)
     (high, dim) = f_params['X'].shape
-    # 1.- Compute initial batch I0 and g0
-    smpIdx = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
-    # sample
-    smpX = f_params['X'][smpIdx]
-    smpy = f_params['y'][smpIdx]
     # Inicialización de variables
     S = []
     Y = []
     Theta = []
-    theta_k = theta_0
-    delta_k = delta_0
+    theta = theta_0
+    delta = delta_0
+    gamma = gamma_0
     # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
-    initial_batch = {'kappa': f_params['kappa'], 'X': smpX, 'y': smpy}
-    batch_k = initial_batch
-    fh_k = func(theta_k, f_params=batch_k)
-    gh_k = grad(theta_k, f_params=batch_k)                                      # Línea 1
-    for iter in range(numIter):                                                 # Línea 2
-        if NORM(gh_k) <= eps:                                                   # Línea 3
-            break                                                               # Línea 4.- Terminamos el ciclo para retonar el valor de la función
-        # endif                                                                 # Línea 5
-        # Choose at most m pairs {sj, yj}
-            # Line 6
-        # Compute p* using Algorithm 2
-            # Line 7
-        # Compute step-size alpha with Wolfe line-search on p_star. Set p_star = alpha * p_star
-            # Compute step-size alpha with Wolfe line-search on p*. Set p* = alpha p*
-            alpha_k = alpha
+    for iter in range(numIter):                         # Línea 2
+        # Muestreamos una lista con índices aleatorios para la conformación del lote
+        sample_idxs = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
+        # Obtenemos la muestra de observaciones y etiquetas
+        sample_X = f_params['X'][sample_idxs]
+        sample_y = f_params['y'][sample_idxs]
+        # 1. Compute iteration batch I_k and g_k (added f_k)
+        batch = {'kappa': f_params['kappa'], 'X': sample_X, 'y': sample_y}
+        f = func(theta, f_params=batch)
+        g = grad(theta, f_params=batch)                 # Línea 1
+        norm_g = NORM(g)
 
+        # Trust-region subproblem (calc of p star with Algorithm 2)
+        if iter == 0 or len(S) == 0:                    # En la primera iteración o siempre que se haya hecho reset a la lista
+            p = -delta * (g / norm_g)
+            Bp = gamma * p
+        else:
+            p = TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv)         # Línea 7
+            Bp = gamma * p + Psi @ (np.linalg.solve(Minv, Psi.T.dot(p)))
 
-            # Line 8
-        # Line-search end
-        # Compute the ratio rho_k = actual reduction / predicted reduction
-        ared = func(theta_k + p_s) - func(theta_k)
-        pred =
-        rho_k = ared/pred                                                       # Línea 9
-        theta_kp1 = theta_k + p_s                                               # Línea 10
-        fh_kp1 = func(theta_kp1, f_params=batch_k)
-        # Compute gh_k+1, sk, yk and gammak
-        gh_kp1 = grad(theta_kp1, f_params=batch_k)                              # Línea 11 gh_k+1
-        sk = fh_kp1 - fh_k                                                      # Línea 11 sk
-        yk = gh_kp1 - gh_k                                                      # Línea 11 yk
-        S.append(sk)
-        Y.append(yk)
-        norm_sk = NORM(s_k)
-        if rho_k < tau_2:                                                       # Línea 12
-            delta_kp1 = min(eta1 * delta_k, eta_2 * norm_sk)                    # Línea 13
-        else:                                                                   # Línea 14
-            if rho_k >= tau_3 and norm_sk >= eta_3 * delta_k:                   # Línea 15
-                delta_kp1 = eta_4 * delta_k                                     # Línea 16
-            else:                                                               # Línea 17
-                delta_kp1 = delta_k                                             # Línea 18
-            # endif                                                             # Línea 19
-        # endif                                                                 # Línea 20
-        # Actualizamos variables de iteración
-        theta_k = theta_kp1
-        delta_k = delta_kp1
+        Q_p = p.T.dot(g + 0.5*Bp)
+        norm_p = NORM(p)
+        # Compute new values of the function and gradient
+        theta_new = theta + p                                               # Línea 10
+        f_new = func(theta_new, f_params=batch)
+        g_new = func(theta_new, f_params=batch)                             # Línea 11
+        # Compute curvature pairs
+        s = theta_new - theta # or assign p directly                        # Línea 11
+        y = g_new - g                                                       # Línea 11
+
+        # Compute the reduction-ratio rho = actual / estimated reduction
+        ared = f_new - f
+        pred = Q_p
+        rho = ared/pred                                 # Línea 9
+
+        # Stop condition
+        if norm_g < eps:                                # Línea 3
+            break                                       # Línea 4
+
+        # Update variables
+        theta = theta_new
         Theta.append(theta)
-    # endfor                                                                    # Línea 21
+
+        # Adjust TR radius
+        if rho > 0.75:                                  # Línea 12
+            if norm_p <= 0.8 * delta:
+                delta_new = delta
+            else:
+                delta_new = 2 * delta
+        else:
+            if 0.1 <= rho and rho <= 0.75:
+                delta_new = delta
+            else:
+                delta_new = 0.5 * delta
+        delta = delta_new
+
+        # Update conditions
+        y_Bs = y - Bp
+        if np.abs(s.T.dot(y_Bs)) > 1e-8 * norm_p * NORM(y_Bs):
+            S.append(s)
+            Y.append(y)
+            # Removemos el primer elemento de acuerdo con el tamaño de la memoria
+            if (len(S) > mem_size):
+                S.pop(0)
+                Y.pop(0)
+            # A partir de los vectores de curvatura construimos las matrices para el subproblema de la región de confianza
+            while (len(S) > 0):
+                SY = S.T.dot(Y)
+                SS = S.T.dot(S)
+                LDLt = np.tril(SY) + np.tril(SY).T
+
+                eig_val = EIG(LDLt, SS)
+                lambda_hat_min = min(eig_val)
+                if lambda_hat_min > 0:
+                    gamma = max(0.5*lambda_hat_min, 1e-6)
+                else:
+                    gamma = min(1.5*lambda_hat_min, -1e-6)
+
+                Minv = (LDLt - gamma * SS)  # Minv = (L+D+Lt-St@B@S)
+                Psi = Y - gamma * S         # Psi = Y-B@S
+
+                # Se verifica que las matrices sean de rango completo
+                if Psi.shape[1] == RANK(Psi) && Minv.shape[1] == RANK(Minv):
+                    break
+                else:
+                    # Eliminamos vectores de curvatura para recalcular las matrices
+                    S.pop(0)
+                    Y.pop(0)
+
     return np.array(Theta)
 
 def TRsubproblem_solver_OBS:
