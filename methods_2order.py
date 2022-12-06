@@ -1,5 +1,108 @@
 import numpy as np
 
+# Definimos algunas variables para acortar los nombres de funciones
+NORM = np.linalg.norm
+CHOL = np.linalg.cholesky
+EIG  = np.linalg.eig
+
+# Algorithm 1: L-SR1 Trust-Region (L-SR1-TR) Method
+# Erway, et. al., p. 8
+def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
+    '''
+        Stochastic SR1 Trust-region scheme (MB-LSR1)
+        Griffin, et. al.
+        A minibatch stochastic Quasi-Newton method adapted for nonconvex deep learning problems
+        Algorithm 1, p. 5
+
+        Parámetros
+        -----------
+        theta     :   condicion inicial (x0)
+        fun       :   función de costo
+        grad      :   gradiente de la función de costo
+        gd_params :   lista de parametros para el algoritmo de descenso,
+                        nIter    = gd_params['nIter'] número de iteraciones
+                        numIter:            Max. num. of iterations
+                        batch_size:         Batch size
+                        mmr:                Memory size
+                        delta_0:            Trust-region radius
+                        eps:                Termination tolerance
+                        gamma_0:
+                        tau_1:
+                        tau_2:
+                        tau_3:
+                        eta_1:
+                        eta_2:
+                        eta_3:
+                        eta_4
+                        alpha:              Step-size for Wolfe line-search (alpha = 1)
+                        mu:                 (mu = 0.9)
+        f_params  :   lista de parametros para la funcion objetivo,
+                          kappa = f_params['kappa'] parametro de escala (rechazo de outliers)
+                          X     = f_params['X'] Variable independiente
+                          y     = f_params['y'] Variable dependiente
+
+        Regresa
+        -----------
+        Theta     :   trayectoria de los parametros
+                         Theta[-1] es el valor alcanzado en la ultima iteracion
+    '''
+    nIter       = gd_params['nIter']
+    numIter     = gd_params['numIter']
+    batch_size  = gd_params['batch_size']
+    mmr         = gd_params['mmr']
+    delta_0	    = gd_params['delta_0']
+    eps	        = gd_params['eps']
+    gamma_0	    = gd_params['gamma_0']
+    tau_1	    = gd_params['tau_1']
+    tau_2	    = gd_params['tau_2']
+    tau_3	    = gd_params['tau_3']
+    eta_1	    = gd_params['eta_1']
+    eta_2	    = gd_params['eta_2']
+    eta_3	    = gd_params['eta_3']
+    eta_4       = gd_params['eta_4']
+    alpha	    = gd_params['alpha']
+    mu	        = gd_params['mu']
+    # Variables para el muestreo aleatorio de los lotes (batch size)
+    (high, dim) = f_params['X'].shape
+    # 1.- Compute initial batch I0 and g0
+    smpIdx = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
+    # sample
+    smpX = f_params['X'][smpIdx]
+    smpy = f_params['y'][smpIdx]
+    # Inicialización de variables
+    theta_k = theta_0
+    delta_k = delta_0
+    # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
+    initial_batch = {'kappa': f_params['kappa'], 'X': smpX, 'y': smpy}
+    batch_k = initial_batch
+    fh_k = func(theta_k, f_params=batch_k)
+    gh_k = grad(theta_k, f_params=batch_k)                                      # Línea 1
+    for iter in range(numIter):                                                 # Línea 2
+        if NORM(gh_k) <= eps:                                                   # Línea 3
+            break                                                               # Línea 4.- Terminamos el ciclo para retonar el valor de la función
+        # Choose at most m pairs {sj, yj}
+        # Compute p* using Algorithm 2
+        v_k = mu * v_km1 + (theta_k - theta_km1)                                # Línea 8
+        v_k = mu * min(1.0, delta_k/NORM(v_k))*v_k                              # Línea 9
+        p_s = min(1.0, delta_k/NORM(p_s + v_k))(p_s + v_k)                      # Línea 10
+        # Compute step-size alpha with Wolfe line-search on p*. Set p* = alpha p*
+        alpha_k = alpha
+
+        # Line-search end
+        # Compute the ratio rho_k = actual reduction / predicted reduction
+        ared = func(theta_k + p_s) - func(theta_k)
+        pred =
+
+        theta_kp1 = theta_k + p_s                                               # Línea 13
+        fh_kp1 = func(theta_kp1, f_params=batch_k)
+        # Compute gh_k+1, sk, yk and gammak
+        gh_kp1 = grad(theta_kp1, f_params=batch_k)                              # Línea 14 gh_k+1
+        sk = fh_kp1 - fh_k                                                      # Línea 14 sk
+        yk = gh_kp1 - gh_k                                                      # Línea 14 yk
+
+
+# Algorithm 1.- Stochastic SR1 Trust-region scheme (MB-LSR1)
+# Griffin, et. al., p. 5
 def MB_LSR1(theta=[], fun=None, grad=None, gd_params={}, f_params={}):
     '''
     Stochastic SR1 Trust-region scheme (MB-LSR1)
@@ -258,3 +361,29 @@ def getBatch(nb, N, fK, k, K, R, gamma_1, gamma_2, zeta, fun, grad, theta, f_par
         fK = fun(theta, f_params)
     # Line 15.- Randomly draw batch Ik+1 with size nb defining f^
     return nb, fK, zeta
+
+
+
+# Algorithm 2: Orthonormal Basis SR1 Method
+def Orthonormal_Basis(S,Y, gamma):
+    Psi = Yk - B0 @ Sk
+    # 1.- Compute the Cholesky factor R of Psi' * Psi
+    R = np.linalg.cholesky(Psi.T @ Psi)
+    Rinv = np.linalg.inv(R)
+    # Requerimos construir la matriz M para el paso siguiente
+    tmpp = np.sum((S * Y), axis=0)
+    Dp = np.diag(tmpp)
+    Mp = (Dp + R + R.T)
+    Minvp = np.linalg.inv(Mp)
+    # 2.- Compute the spectral decomposition R*M*R' = U*Â*U' (solo usamos los eingenvalores)
+    A, U = np.linalg.eig(R @ (Minvp @ R.T))
+    A1 = A + gamma * np.eye(len(A))
+    lambda_1 = np.min(A1)
+    lambda_min = min(lambda_1, gamma)
+    PsiRinvU = Psi @ (Rinv @ U)
+    gb = PsiRinvU.T @ gk
+    if lambda_min > 0 and psi(0) >= 0:
+        sigma_s = 0
+        Bkinv = np.linalg.inv(Bk)
+        ps = - Bkinv @ gk
+    else:
