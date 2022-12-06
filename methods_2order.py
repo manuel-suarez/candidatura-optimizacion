@@ -4,6 +4,7 @@ import numpy as np
 NORM = np.linalg.norm
 CHOL = np.linalg.cholesky
 EIG  = np.linalg.eig
+INV  = np.linalg.inv
 
 # Algorithm 1: L-SR1 Trust-Region (L-SR1-TR) Method
 # Erway, et. al., p. 8
@@ -70,6 +71,9 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     smpX = f_params['X'][smpIdx]
     smpy = f_params['y'][smpIdx]
     # Inicialización de variables
+    S = []
+    Y = []
+    Theta = []
     theta_k = theta_0
     delta_k = delta_0
     # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
@@ -80,26 +84,54 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     for iter in range(numIter):                                                 # Línea 2
         if NORM(gh_k) <= eps:                                                   # Línea 3
             break                                                               # Línea 4.- Terminamos el ciclo para retonar el valor de la función
+        # endif                                                                 # Línea 5
         # Choose at most m pairs {sj, yj}
+            # Line 6
         # Compute p* using Algorithm 2
-        v_k = mu * v_km1 + (theta_k - theta_km1)                                # Línea 8
-        v_k = mu * min(1.0, delta_k/NORM(v_k))*v_k                              # Línea 9
-        p_s = min(1.0, delta_k/NORM(p_s + v_k))(p_s + v_k)                      # Línea 10
-        # Compute step-size alpha with Wolfe line-search on p*. Set p* = alpha p*
-        alpha_k = alpha
+            # Line 7
+        # Compute step-size alpha with Wolfe line-search on p_star. Set p_star = alpha * p_star
+            # Compute step-size alpha with Wolfe line-search on p*. Set p* = alpha p*
+            alpha_k = alpha
 
+
+            # Line 8
         # Line-search end
         # Compute the ratio rho_k = actual reduction / predicted reduction
         ared = func(theta_k + p_s) - func(theta_k)
         pred =
-
-        theta_kp1 = theta_k + p_s                                               # Línea 13
+        rho_k = ared/pred                                                       # Línea 9
+        theta_kp1 = theta_k + p_s                                               # Línea 10
         fh_kp1 = func(theta_kp1, f_params=batch_k)
         # Compute gh_k+1, sk, yk and gammak
-        gh_kp1 = grad(theta_kp1, f_params=batch_k)                              # Línea 14 gh_k+1
-        sk = fh_kp1 - fh_k                                                      # Línea 14 sk
-        yk = gh_kp1 - gh_k                                                      # Línea 14 yk
+        gh_kp1 = grad(theta_kp1, f_params=batch_k)                              # Línea 11 gh_k+1
+        sk = fh_kp1 - fh_k                                                      # Línea 11 sk
+        yk = gh_kp1 - gh_k                                                      # Línea 11 yk
+        S.append(sk)
+        Y.append(yk)
+        norm_sk = NORM(s_k)
+        if rho_k < tau_2:                                                       # Línea 12
+            delta_kp1 = min(eta1 * delta_k, eta_2 * norm_sk)                    # Línea 13
+        else:                                                                   # Línea 14
+            if rho_k >= tau_3 and norm_sk >= eta_3 * delta_k:                   # Línea 15
+                delta_kp1 = eta_4 * delta_k                                     # Línea 16
+            else:                                                               # Línea 17
+                delta_kp1 = delta_k                                             # Línea 18
+            # endif                                                             # Línea 19
+        # endif                                                                 # Línea 20
+        # Actualizamos variables de iteración
+        theta_k = theta_kp1
+        delta_k = delta_kp1
+        Theta.append(theta)
+    # endfor                                                                    # Línea 21
+    return np.array(Theta)
 
+def TRsubproblem_solver_OBS:
+    Psi = Y_k - B0 @ S_k
+    M = INV(D_k + L_k + L_k.T - S_k.T @ (B0 @ S_k))
+    # Compute the Cholesky factor R of PsiT @ Psi
+    R = CHOL(Psi.T.dot(Psi))                            # Línea 1
+    # Compute the spectral decomposicion R @ M @ Rt = U A_h Ut (with lamba_h1 <= ... <= lamba_hk)
+    A, U = EIG(R.dot(M.dot(R.T)))
 
 # Algorithm 1.- Stochastic SR1 Trust-region scheme (MB-LSR1)
 # Griffin, et. al., p. 5
