@@ -213,18 +213,24 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
             if sigma_hat > -lambda_min
                 sigma_star = newton_method(sigma_hat, delta, a, lambdap)
             else:
-                sigma_star = newton_method(-lambda_min, delta, a, lambda)
+                sigma_star = newton_method(-lambda_min, delta, a, lambdap)
         tau_star = sigma_star + gamma
         p_star = equation_p1(tau_star, g, Psi, Minv)
+    return p_star
 
-
-
-    Psi = Y_k - B0 @ S_k
-    M = INV(D_k + L_k + L_k.T - S_k.T @ (B0 @ S_k))
-    # Compute the Cholesky factor R of PsiT @ Psi
-    R = CHOL(Psi.T.dot(Psi))                            # Línea 1
-    # Compute the spectral decomposicion R @ M @ Rt = U A_h Ut (with lamba_h1 <= ... <= lamba_hk)
-    A, U = EIG(R.dot(M.dot(R.T)))
+# OBS phi function definition
+# Erway, et. al., equation 15, p. 7,
+def phi(sigma, delta, a, lambdap):
+    obs_eps = 1e-10
+    t = lambdap + sigma
+    if (np.sum(np.abs(a) < obs_eps) > 0) or (np.sum(np.abs(t) < obs_eps) > 0):
+        llpll2 = 0
+        for i in range(a):
+            if (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) < obs_eps):
+                return -1/delta
+            elif (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) > obs_eps):
+                llpll2 = llpll2 + (a[i]/t[i])**2
+        return 1/np.sqrt(llpll2) - 1/delta
 
 # Algorithm 1.- Stochastic SR1 Trust-region scheme (MB-LSR1)
 # Griffin, et. al., p. 5
