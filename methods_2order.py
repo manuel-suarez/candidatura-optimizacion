@@ -144,8 +144,8 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                 Y.pop(0)
             # A partir de los vectores de curvatura construimos las matrices para el subproblema de la región de confianza
             while (len(S) > 0):
-                SY = S.T.dot(Y)
-                SS = S.T.dot(S)
+                SY = np.array(S).T.dot(np.array(Y))
+                SS = np.array(S).T.dot(np.array(S))
                 LDLt = np.tril(SY) + np.tril(SY).T
 
                 eig_val = EIG(LDLt, SS)
@@ -156,10 +156,10 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                     gamma = min(1.5*lambda_hat_min, -1e-6)
 
                 Minv = (LDLt - gamma * SS)  # Minv = (L+D+Lt-St@B@S)
-                Psi = Y - gamma * S         # Psi = Y-B@S
+                Psi = np.array(Y) - gamma * S         # Psi = Y-B@S
 
                 # Se verifica que las matrices sean de rango completo
-                if Psi.shape[1] == RANK(Psi) && Minv.shape[1] == RANK(Minv):
+                if Psi.shape[1] == RANK(Psi) and Minv.shape[1] == RANK(Minv):
                     break
                 else:
                     # Eliminamos vectores de curvatura para recalcular las matrices
