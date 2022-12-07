@@ -26,7 +26,7 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
         grad      :   gradiente de la función de costo
         gd_params :   lista de parametros para el algoritmo de descenso,
                         nIter    = gd_params['nIter'] número de iteraciones
-                        numIter:            Max. num. of iterations
+                        nIter:            Max. num. of iterations
                         batch_size:         Batch size
                         mmr:                Memory size
                         delta_0:            Trust-region radius
@@ -52,7 +52,6 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                          Theta[-1] es el valor alcanzado en la ultima iteracion
     '''
     nIter       = gd_params['nIter']
-    numIter     = gd_params['numIter']
     batch_size  = gd_params['batch_size']
     mem_size    = gd_params['mem_size']
     delta_0	    = gd_params['delta_0']
@@ -77,7 +76,7 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     delta = delta_0
     gamma = gamma_0
     # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
-    for iter in range(numIter):                         # Línea 2
+    for iter in range(nIter):                         # Línea 2
         # Muestreamos una lista con índices aleatorios para la conformación del lote
         sample_idxs = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
         # Obtenemos la muestra de observaciones y etiquetas
@@ -181,7 +180,7 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     idxs = Wd.argsort(axis=1)
     U = VR[:,idxs]
     lambda1 = lambda_hat + gamma
-    lambdap = [lambda1;gamma] # TODO corregir
+    lambdap = np.append(lambda1, gamma)
     # Mínimo eigenvalor
     lambdap = lambdap * (np.abs(lambdap) > obs_eps)
     lambda_min = min(lambdap[0], gamma)
@@ -191,7 +190,7 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     llg_perbll = np.sqrt(np.abs(g.T.dot(g) - g_ll.T.dot(g_ll)))
     if llg_perbll^2 < obs_eps:
         llg_perbll = 0
-    a = [g_ll; llg_perbll] # TODO corregir
+    a = np.append(g_ll, llg_perbll)
     # Case 1
     if (lambda_min > 0) and (phi(0, delta, a, lambdap) >= 0):
         sigma_star = 0
