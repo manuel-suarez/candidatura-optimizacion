@@ -226,7 +226,7 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     W, VR = EIG(RMR, right=True)
     print("W", W, W.shape, W.ndim)
     print("VR", VR, VR.shape, VR.ndim)
-    Wd = np.diag(W)
+    Wd = W
     print("Wd", Wd, Wd.shape, Wd.ndim)
     lambda_hat = np.sort(Wd)
     print("lambda_hat", lambda_hat, lambda_hat.shape, lambda_hat.ndim)
