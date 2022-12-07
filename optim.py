@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import linear_model, datasets
 from methods_1order import *
+from methods_2order import L_STR1_TR
 
 n_samples = 500
 X, y = datasets.make_regression(n_samples=n_samples,
@@ -60,6 +61,10 @@ gd_params = {'alpha'          : 0.95,
              'alphaADAM'      : 0.95,
              'nIter'          : 300,
              'batch_size'     : 100,
+             'mem_size'       : 20,
+             'delta_0'        : 1,
+             'gamma_0'        : 1,
+             'eps'            : 1e-5,
              'eta'            : 0.9,
              'eta1'           : 0.9,
              'eta2'           : 0.999}
