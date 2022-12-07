@@ -223,6 +223,7 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
 def phi(sigma, delta, a, lambdap):
     obs_eps = 1e-10
     t = lambdap + sigma
+    # Zero in a fraction
     if (np.sum(np.abs(a) < obs_eps) > 0) or (np.sum(np.abs(t) < obs_eps) > 0):
         llpll2 = 0
         for i in range(a):
@@ -231,6 +232,9 @@ def phi(sigma, delta, a, lambdap):
             elif (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) > obs_eps):
                 llpll2 = llpll2 + (a[i]/t[i])**2
         return 1/np.sqrt(llpll2) - 1/delta
+    # No zero
+    llpll = NORM(a/t)
+    return 1/llpll - 1/delta
 
 # Algorithm 1.- Stochastic SR1 Trust-region scheme (MB-LSR1)
 # Griffin, et. al., p. 5
