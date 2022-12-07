@@ -2,11 +2,13 @@ import numpy as np
 import scipy as sp
 
 # Definimos algunas variables para acortar los nombres de funciones
+SOLVE = np.linalg.solve
 NORM = np.linalg.norm
 CHOL = np.linalg.cholesky
 RANK = np.linalg.matrix_rank
 EIG  = sp.linalg.eig # To solve generalized eigenvalues problem
 INV  = np.linalg.inv
+QR   = sp.linalg.qr
 
 # Algorithm 1: L-SR1 Trust-Region (L-SR1-TR) Method
 # Erway, et. al., p. 8
@@ -166,7 +168,30 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
 
     return np.array(Theta)
 
-def TRsubproblem_solver_OBS:
+def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
+    obs_eps = 1e-10
+    # Descomposición
+    Q, R = QR(Psi, mode='economic')
+    RMR = R.dot(SOLVE(Minv, R.T))
+    RMR = (RMR + RMR.T)/2
+    # Eingenvalores
+    W, VR = EIG(RMR, right=True)
+    Wd = np.diag(W)
+    lambda_hat = Wd.sort(axis=1)
+    idxs = Wd.argsort(axis=1)
+    U = VR[:,idxs]
+    lambda1 = lambda_hat + gamma
+    lambdap = [lambda1;gamma] # TODO corregir
+    P_ll = Q.dot(U)
+    g_ll = P_ll.T.dot(g)
+    llg_perbll = np.sqrt(np.abs(g.T.dot(g) - g_ll.T.dot(g_ll)))
+    if llg_perbll^2 < obs_eps:
+        llg_perbll = 0
+    a = [g_ll; llg_perbll] # TODO corregir
+    # Cases to solve
+
+
+
     Psi = Y_k - B0 @ S_k
     M = INV(D_k + L_k + L_k.T - S_k.T @ (B0 @ S_k))
     # Compute the Cholesky factor R of PsiT @ Psi
