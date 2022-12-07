@@ -15,7 +15,7 @@ def print_v(name, var, debug=True):
     if debug:
         print(f"{name} =", var, var.ndim, var.shape, np.isscalar(var))
 
-def check_dims(var, ndim, m, n):
+def check_dims(var, ndim, m=None, n=None):
     assert var.ndim == ndim
     if ndim == 1:
         assert var.shape[0] == m
@@ -84,14 +84,19 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     S = np.array([])
     Y = np.array([])
     Theta = []
-    theta = theta_0
-    num_vars = theta_0.shape[0] # Número de variables a optimizar, se usa para verificar el shape de los vectores y matrices generados
-    print(f"Se están optimizando {num_vars} variables")
+    n = theta_0.shape[0] # Número de variables a optimizar, se usa para verificar el shape de los vectores y matrices generados
+    print(f"Se están optimizando {n} variables")
+    theta = np.array([theta_0]).T
+    print_v("theta_0", theta, False)
+    check_dims(theta, 2, n, 1)
     delta = delta_0
     gamma = gamma_0
     # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
+    e = 0 # Es el contador de cuantos renglones hemos eliminado de S y Y, es importante llevar la cuenta
+    # ya que las dimensiones de los vectores y matrices que dependen de k deben considerar el efecto de reducción en e
     for iter in range(nIter):                         # Línea 2
-        print(f"{30*'='}> Iteración {iter} <{30*'='}")
+        k = iter+1
+        print(f"{30*'='}> Iteración {k} <{30*'='}")
         # Muestreamos una lista con índices aleatorios para la conformación del lote
         sample_idxs = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
         # Obtenemos la muestra de observaciones y etiquetas
@@ -101,10 +106,13 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
         batch = {'kappa': f_params['kappa'], 'X': sample_X, 'y': sample_y}
         f = func(theta, f_params=batch)
         print_v("f", f, False)
+        check_dims(f, 0)
         g = np.array([grad(theta, f_params=batch)]).T                 # Línea 1
-        print_v("g", g)
+        print_v("g", g, False)
+        check_dims(g, 2, n, 1)
         norm_g = NORM(g)
-        print_v("norm_g", g)
+        print_v("norm_g", norm_g, False)
+        check_dims(norm_g, 0)
 
         # Trust-region subproblem (calc of p star with Algorithm 2)
         if iter == 0 or S.shape[0] == 0:                    # En la primera iteración o siempre que se haya hecho reset a la lista
@@ -124,21 +132,40 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
             #print("tmp =", tmp, tmp.shape, tmp.ndim)
             Bp = gamma * p + tmp
         #print("Bp =", Bp, Bp.shape, Bp.ndim)
+        print_v("p", p, False)
+        check_dims(p, 2, n, 1)
+        print_v("Bp", Bp, False)
+        check_dims(Bp, 2, n, 1)
 
         Q_p = p.T.dot(g + 0.5*Bp)
+        print_v("Q_p", Q_p, False)
+        # Q_p debería ser un escalar pero es una matríz de 2 dimensiones de 1x1
+        check_dims(Q_p, 2, 1, 1)
         norm_p = NORM(p)
+        print_v("norm_p", norm_p, False)
+        check_dims(norm_p, 0)
         # Compute new values of the function and gradient
         theta_new = theta + p                                               # Línea 10
+        print_v("theta", theta, False)
+        print_v("theta_new", theta_new, False)
+        check_dims(theta_new, 2, n, 1)
         f_new = func(theta_new, f_params=batch)
         g_new = func(theta_new, f_params=batch)                             # Línea 11
         # Compute curvature pairs
         s = theta_new - theta # or assign p directly                        # Línea 11
+        print_v("s", s, False)
+        check_dims(s, 2, n, 1)
         y = g_new - g                                                       # Línea 11
+        print_v("y", y, False)
+        check_dims(y, 2, n, 1)
 
         # Compute the reduction-ratio rho = actual / estimated reduction
         ared = f_new - f
         pred = Q_p
         rho = ared/pred                                 # Línea 9
+        print_v("rho", rho, False)
+        # rho debería ser un escalar pero también es una matriz de 2 dimensiones de 1x1 (por las operaciones para calcularlo)
+        check_dims(rho, 2, 1, 1)
 
         # Stop condition
         if norm_g < eps:                                # Línea 3
@@ -160,30 +187,51 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
             else:
                 delta_new = 0.5 * delta
         delta = delta_new
+        # delta es un tipo nativo de Python, debo analizar si conviene convertirlo a tipo escalar de Numpy
+        #print_v("delta", delta)
+        #check_dims(delta, 0)
 
         # Update conditions
         #print("Update conditions", iter)
         y_Bs = y - Bp
+        print_v("y_Bs", y_Bs, False)
+        check_dims(y_Bs, 2, n, 1)
         if np.abs(s.T.dot(y_Bs)) > 1e-8 * norm_p * NORM(y_Bs):
             if iter == 0:
                 S = s
                 Y = y
             else:
-                S = np.vstack((S, s))
-                Y = np.vstack((Y, y))
+                try:
+                    S = np.hstack((S, s))
+                    Y = np.hstack((Y, y))
+                except:
+                    print("Error en hstack")
+                    print_v("S", S)
+                    check_dims(S, 2, n, k-e)
+                    print_v("Y", Y)
+                    check_dims(Y, 2, n, k-e)
+                    raise
             # Removemos el primer elemento de acuerdo con el tamaño de la memoria
-            if (S.ndim > 1 and S.shape[0] > mem_size):
-                S = S[1:, :]
-                Y = Y[1:, :]
+            if (S.shape[1] > mem_size):
+                S = S[:, 1:]
+                Y = Y[:, 1:]
+            print_v("S", S)
+            check_dims(S, 2, n, k-e)
+            print_v("Y", Y)
+            check_dims(Y, 2, n, k-e)
             # A partir de los vectores de curvatura construimos las matrices para el subproblema de la región de confianza
             #print(S.shape, S.ndim, len(S))
-            while (S.shape[0] > 0):
+            while (S.shape[1] > 0):
                 #print("Curvature pairs", S.shape[0])
                 #print("S", S, S.ndim, S.shape)
                 #print("Y", Y, Y.ndim, Y.shape)
                 SY = S.T.dot(Y)
+                print_v("SY", SY)
+                check_dims(SY, 2, k-e, k-e)
                 #print("SY", SY, SY.ndim, SY.shape)
                 SS = S.T.dot(S)
+                print_v("SS", SS)
+                check_dims(SS, 2, k-e, k-e)
                 #print("SS", SS, SS.ndim, SS.shape)
                 if SY.ndim == 0:
                     LDLt = SY
@@ -197,13 +245,23 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                     lambda_hat_min = np.min(eig_val)
                 #print("LDLt", LDLt)
                 #print("eig_val", eig_val)
+                print_v("LDLt", LDLt)
+                check_dims(LDLt, 2, k-e, k-e)
+                print_v("eig_val", eig_val)
+                check_dims(eig_val, 1, k-e) # eig_val es un vector del cuál solo extraemos el valor mínimo por lo que no debería haber problema se quede en 1 dimensión
+                print_v("lambda_hat_min", lambda_hat_min)
+                check_dims(lambda_hat_min, 0)
 
                 if lambda_hat_min > 0:
                     gamma = max(0.5*lambda_hat_min, 1e-6)
                 else:
                     gamma = min(1.5*lambda_hat_min, -1e-6)
+                print_v("gamma", gamma)
+                check_dims(gamma, 0)
 
                 Minv = (LDLt - gamma * SS)  # Minv = (L+D+Lt-St@B@S)
+                print_v("Minv", Minv)
+                check_dims(Minv, 2, k-e, k-e)
                 #print("Minv", Minv, Minv.ndim, Minv.shape, RANK(Minv))
                 Psi = Y - gamma * S         # Psi = Y-B@S
                 #print("Psi", Psi, Psi.ndim, Psi.shape, RANK(Psi))
@@ -211,6 +269,8 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                     Psi = np.reshape(Psi, (Psi.shape[0], 1))
                     #print("Psi", Psi, Psi.ndim, Psi.shape, RANK(Psi))
                 # Psi debería ser de tamaño num de variables x num de iteraciones
+                print_v("Psi", Psi)
+                check_dims(Psi, 2, n, k-e)
 
                 # Se verifica que las matrices sean de rango completo
                 RANK_Psi = RANK(Psi)
@@ -220,8 +280,20 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                     break
                 else:
                     # Eliminamos vectores de curvatura para recalcular las matrices
-                    S = S[1:, :]
-                    Y = Y[1:, :]
+                    print("Eliminando vectores de curvatura")
+                    # Verificamos previo a la eliminación
+                    print_v("S", S)
+                    check_dims(S, 2, n, k-e)
+                    print_v("Y", Y)
+                    check_dims(Y, 2, n, k-e)
+                    e = e + 1
+                    S = S[:, 1:]
+                    Y = Y[:, 1:]
+                    # Verificamos posterior a la eliminación
+                    print_v("S", S)
+                    check_dims(S, 2, n, k - e)
+                    print_v("Y", Y)
+                    check_dims(Y, 2, n, k - e)
 
     return np.array(Theta)
 
