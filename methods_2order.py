@@ -10,6 +10,18 @@ EIG  = sp.linalg.eig # To solve generalized eigenvalues problem
 INV  = np.linalg.inv
 QR   = sp.linalg.qr
 
+# Función auxiliar para depurar (fallará si no es un ndarray)
+def print_v(name, var, debug=True):
+    if debug:
+        print(f"{name} =", var, var.ndim, var.shape, np.isscalar(var))
+
+def check_dims(var, ndim, m, n):
+    assert var.ndim == ndim
+    if ndim == 1:
+        assert var.shape[0] == m
+    if ndim == 2:
+        assert var.shape[0] == m and var.shape[1] == n
+
 # Algorithm 1: L-SR1 Trust-Region (L-SR1-TR) Method
 # Erway, et. al., p. 8
 def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
@@ -73,7 +85,8 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     Y = np.array([])
     Theta = []
     theta = theta_0
-
+    num_vars = theta_0.shape[0] # Número de variables a optimizar, se usa para verificar el shape de los vectores y matrices generados
+    print(f"Se están optimizando {num_vars} variables")
     delta = delta_0
     gamma = gamma_0
     # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
@@ -87,8 +100,11 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
         # 1. Compute iteration batch I_k and g_k (added f_k)
         batch = {'kappa': f_params['kappa'], 'X': sample_X, 'y': sample_y}
         f = func(theta, f_params=batch)
-        g = grad(theta, f_params=batch)                 # Línea 1
+        print_v("f", f, False)
+        g = np.array([grad(theta, f_params=batch)]).T                 # Línea 1
+        print_v("g", g)
         norm_g = NORM(g)
+        print_v("norm_g", g)
 
         # Trust-region subproblem (calc of p star with Algorithm 2)
         if iter == 0 or S.shape[0] == 0:                    # En la primera iteración o siempre que se haya hecho reset a la lista
