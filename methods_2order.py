@@ -196,21 +196,21 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     if (lambda_min > 0) and (phi(0, delta, a, lambdap) >= 0):
         sigma_star = 0
         tau_star = gamma + sigma_star
-        p_star = equation_p1(tau_star, g, Psi, Minv) # TODO implementar
+        p_star = equation_p1(tau_star, g, Psi, Minv)
     # Case 2
     elif (lambda_min <= 0) and (phi(-lambda_min, delta, a, lambdap) >= 0):
         sigma_star = -lambda_min
-        p_star = equation_p2(sigma_star, gamma, g, a, lambdap, P_ll, g_ll) # TODO implementar
+        p_star = equation_p2(sigma_star, gamma, g, a, lambdap, P_ll, g_ll)
     # Case 3
         if lambda_min < 0:
             p_hat = p_star
-            p_star = equation_p3(lambda_min, delta, p_hat, lambdap, P_ll) # TODO implementar
+            p_star = equation_p3(lambda_min, delta, p_hat, lambdap, P_ll)
     else:
         if lambda_min > 0:
-            sigma_star = newton_method(0, delta, a, lambdap) # TODO implementar
+            sigma_star = newton_method(0, delta, a, lambdap)
         else:
             sigma_hat = max(np.abs(a)/delta - lambdap)
-            if sigma_hat > -lambda_min
+            if sigma_hat > -lambda_min:
                 sigma_star = newton_method(sigma_hat, delta, a, lambdap)
             else:
                 sigma_star = newton_method(-lambda_min, delta, a, lambdap)
@@ -226,7 +226,7 @@ def phi(sigma, delta, a, lambdap):
     # Zero in a fraction
     if (np.sum(np.abs(a) < obs_eps) > 0) or (np.sum(np.abs(t) < obs_eps) > 0):
         llpll2 = 0
-        for i in range(a):
+        for i in range(max(a.shape)):
             if (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) < obs_eps):
                 return -1/delta
             elif (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) > obs_eps):
@@ -235,6 +235,85 @@ def phi(sigma, delta, a, lambdap):
     # No zero
     llpll = NORM(a/t)
     return 1/llpll - 1/delta
+
+# Equations for linear system solvers
+def equation_p1(tau, g, Psi, Minv):
+    Z = tau * Minv + Psi.T.dot(Psi)
+    f = Psi.T.dot(g)
+    return -(g - Psi.dot(SOLVE(Z, f))) / tau
+def equation_p2(sigma, gamma, g, a, lambdap, P_ll, g_ll):
+    eq_eps = 1e-10
+    t = lambdap + sigma
+    idx = np.argwhere(np.abs(t) > eq_eps)
+    c = max(t.shape)
+    v = np.zeros((c,1))
+    v[idx] = a[idx]/(lambdap[idx]+sigma)
+    if np.abs(gamma + sigma) < eq_eps:
+        p = -P_ll * v[0:c-1]
+    else:
+        p = -P_ll * v[1:c-1] - (g - P_ll.dot(g_ll))/(gamma+sigma)
+    return p
+def equation_p3(lambda_min, delta, p_hat, lambdap, P_ll):
+    eq_eps = 1e-10
+    alpha = np.sqrt(delta**2 - p_hat.T.dot(p_hat))
+    # Case 1: lambda[0]
+    if (np.abs(lambda_min - lambdap[0]) < eq_eps):
+        u_min = P_ll[:,0]/NORM(P_ll[:,0])
+        z_star = alpha * u_min
+    # Case 2: gamma
+    else:
+        n,k = P_ll.shape
+        e = np.zeros((n,1))
+        found = 0
+        for i in range(k):
+            e[i] = 1
+            u_min = e - P_ll.dot(P_ll[i,:].T)
+            if (NORM(u_min) > eq_eps):
+                found = 1
+                break
+            e[i] = 0
+        if found == 0:
+            e[i+1] = 1
+            u_min = e - P_ll.dot(P_ll[i+1,:].T)
+        u_min = u_min/NORM(u_min)
+        z_star = alpha * u_min
+    p_star = p_hat + z_star
+    return p_star
+def newton_method(sigma_0, delta, a, lambdap):
+    newton_eps = 1e-10
+    newton_maxit = 100
+    k = 0
+    sigma = sigma_0
+    phi_f, phi_prim = phi_phiprim(sigma, delta, a, lambdap)
+    while (np.abs(phi_f) > newton_eps) and (k < newton_maxit):
+        sigma = sigma - phi_f/phi_prim
+        phi_f, phi_prim = phi_phiprim(sigma, delta, a, lambdap)
+        k = k + 1
+    return sigma
+def phi_phiprim(sigma, delta, a, lambdap):
+    obs_eps = 1e-10
+    t = lambdap + sigma
+    # Zero fraction
+    if (np.sum(np.abs(a) < obs_eps) > 0) or (np.sum(np.abs(t) < obs_eps) > 0):
+        llpll2 = 0
+        llpll_prim = 0
+        for i in range(max(a.shape)):
+            if (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) < obs_eps):
+                phi_f = -1/delta
+                phi_prim = 1/obs_eps
+                return phi_f, phi_prim
+            elif (np.abs(a[i]) > obs_eps) and (np.abs(t[i]) > obs_eps):
+                llpll2 = llpll2 + (a[i]/t[i])**2
+                llpll_prim = llpll_prim + ((a[i]**2)/(t[i]**3))
+        llpll = np.sqrt(llpll2)
+        phi_f = 1/llpll - 1/delta
+        phi_prim = llpll_prim/(llpll**3)
+        return phi_f, phi_prim
+    # No Zero fraction
+    llpll = NORM(a/t)
+    phi_f = 1/llpll - 1/delta
+    phi_prim = np.sum((a**2)/(t**3))/(llpll**3)
+    return phi_f, phi_prim
 
 # Algorithm 1.- Stochastic SR1 Trust-region scheme (MB-LSR1)
 # Griffin, et. al., p. 5
