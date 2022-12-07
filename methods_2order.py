@@ -73,10 +73,12 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     Y = np.array([])
     Theta = []
     theta = theta_0
+
     delta = delta_0
     gamma = gamma_0
     # g_k es el gradiente completo, gh_k es el gradiente de un lote seleccionado aleatoriamente
     for iter in range(nIter):                         # Línea 2
+        print(f"{30*'='}> Iteración {iter} <{30*'='}")
         # Muestreamos una lista con índices aleatorios para la conformación del lote
         sample_idxs = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
         # Obtenemos la muestra de observaciones y etiquetas
@@ -94,18 +96,18 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
             Bp = gamma * p
         else:
             p = TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv)         # Línea 7
-            print("Subproblem p =", p, p.shape, p.ndim)
-            print("Psi =", Psi, Psi.shape, Psi.ndim)
-            print("Minv =", Minv, Minv.shape, Minv.ndim)
+            #print("Subproblem p =", p, p.shape, p.ndim)
+            #print("Psi =", Psi, Psi.shape, Psi.ndim)
+            #print("Minv =", Minv, Minv.shape, Minv.ndim)
             PsiTp = Psi.T.dot(p)
-            print("PsiTp =", PsiTp, PsiTp.shape, PsiTp.ndim)
+            #print("PsiTp =", PsiTp, PsiTp.shape, PsiTp.ndim)
             if Minv.ndim == 0:
                 tmp = Psi * (PsiTp / Minv)
             else:
                 tmp = Psi @ SOLVE(Minv, PsiTp)
-            print("tmp =", tmp, tmp.shape, tmp.ndim)
+            #print("tmp =", tmp, tmp.shape, tmp.ndim)
             Bp = gamma * p + tmp
-        print("Bp =", Bp, Bp.shape, Bp.ndim)
+        #print("Bp =", Bp, Bp.shape, Bp.ndim)
 
         Q_p = p.T.dot(g + 0.5*Bp)
         norm_p = NORM(p)
@@ -174,8 +176,8 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                 else:
                     LDLt = np.tril(SY) + np.tril(SY,-1).T
                     eig_val = EIG(LDLt, SS)[0]
-                    print("eig_val =", eig_val)
-                    print("eig_val =", eig_val, eig_val.shape, eig_val.ndim)
+                    #print("eig_val =", eig_val)
+                    #print("eig_val =", eig_val, eig_val.shape, eig_val.ndim)
                     lambda_hat_min = np.min(eig_val)
                 #print("LDLt", LDLt)
                 #print("eig_val", eig_val)
@@ -188,7 +190,11 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
                 Minv = (LDLt - gamma * SS)  # Minv = (L+D+Lt-St@B@S)
                 #print("Minv", Minv, Minv.ndim, Minv.shape, RANK(Minv))
                 Psi = Y - gamma * S         # Psi = Y-B@S
-                print("Psi", Psi, Psi.ndim, Psi.shape, RANK(Psi))
+                #print("Psi", Psi, Psi.ndim, Psi.shape, RANK(Psi))
+                if Psi.ndim == 1:
+                    Psi = np.reshape(Psi, (Psi.shape[0], 1))
+                    #print("Psi", Psi, Psi.ndim, Psi.shape, RANK(Psi))
+                # Psi debería ser de tamaño num de variables x num de iteraciones
 
                 # Se verifica que las matrices sean de rango completo
                 RANK_Psi = RANK(Psi)
@@ -206,52 +212,56 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
 def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     obs_eps = 1e-10
     # Descomposición
-    print("Psi", Psi, Psi.shape, Psi.ndim)
+    #print("Psi", Psi, Psi.shape, Psi.ndim)
     if Psi.ndim == 1:
-        print("Reshaping...")
+        #print("Reshaping...")
         Psi = np.reshape(Psi, (Psi.shape[0],1))
-    print("Psi", Psi, Psi.shape, Psi.ndim)
+    #print("Psi", Psi, Psi.shape, Psi.ndim)
     Q, R = QR(Psi, mode="economic")
-    print("Q", Q, Q.shape, Q.ndim)
-    print("R", R, R.shape, R.ndim)
-    print("Minv", Minv, Minv.shape, Minv.ndim)
+    #print("Q", Q, Q.shape, Q.ndim)
+    #print("R", R, R.shape, R.ndim)
+    #print("Minv", Minv, Minv.shape, Minv.ndim)
     if Minv.ndim == 0:
         RMR = R * (R.T / Minv)
     else:
         RMR = R.dot(SOLVE(Minv, R.T))
-    print("RMR", RMR, RMR.shape, RMR.ndim)
+    #print("RMR", RMR, RMR.shape, RMR.ndim)
     RMR = (RMR + RMR.T)/2
-    print("RMR", RMR, RMR.shape, RMR.ndim)
+    #print("RMR", RMR, RMR.shape, RMR.ndim)
     # Eingenvalores
     W, VR = EIG(RMR, right=True)
-    print("W", W, W.shape, W.ndim)
-    print("VR", VR, VR.shape, VR.ndim)
+    #print("W", W, W.shape, W.ndim)
+    #print("VR", VR, VR.shape, VR.ndim)
     Wd = W
-    print("Wd", Wd, Wd.shape, Wd.ndim)
+    #print("Wd", Wd, Wd.shape, Wd.ndim)
     lambda_hat = np.sort(Wd)
-    print("lambda_hat", lambda_hat, lambda_hat.shape, lambda_hat.ndim)
+    #print("lambda_hat", lambda_hat, lambda_hat.shape, lambda_hat.ndim)
     # TODO revisar cómo obtener los índices (está dando resultados vectores)
     idxs = np.argsort(Wd)
-    print("idxs", idxs, idxs.shape, idxs.ndim)
+    #print("idxs", idxs, idxs.shape, idxs.ndim)
     # TODO revisar por qué U resulta de 3 dimensiones
     U = VR[:,idxs]
-    print("U", U, U.shape, U.ndim)
+    #print("U", U, U.shape, U.ndim)
     lambda1 = lambda_hat + gamma
-    print("lambda1", lambda1, lambda1.shape, lambda1.ndim)
+    #print("lambda1", lambda1, lambda1.shape, lambda1.ndim)
     lambdap = np.append(lambda1, gamma)
-    print("lambdap", lambdap, lambdap.shape, lambdap.ndim)
+    #print("lambdap", lambdap, lambdap.shape, lambdap.ndim)
     # Mínimo eigenvalor
     lambdap = lambdap * (np.abs(lambdap) > obs_eps)
     lambda_min = min(lambdap[0], gamma)
     #
+    #print("Q =", Q, Q.shape, Q.ndim)
+    #print("U =", U, U.shape, U.ndim)
     P_ll = Q.dot(U)
+    #print("P_ll =", P_ll, P_ll.shape, P_ll.ndim)
     g_ll = P_ll.T.dot(g)
+    #print("g_ll =", g_ll, g_ll.shape, g_ll.ndim)
     gTg = g.T.dot(g)
-    print("gTg =", gTg, gTg.shape, gTg.ndim)
+    #print("gTg =", gTg, gTg.shape, gTg.ndim)
     g_llTg_ll = g_ll.T.dot(g_ll)
-    print("g_llTg_ll =", g_llTg_ll, g_llTg_ll.shape, g_llTg_ll.ndim)
+    #print("g_llTg_ll =", g_llTg_ll, g_llTg_ll.shape, g_llTg_ll.ndim)
     llg_perbll = np.sqrt(np.abs(gTg - g_llTg_ll))
-    print("llg_perbll =", llg_perbll, llg_perbll.shape, llg_perbll.ndim)
+    #print("llg_perbll =", llg_perbll, llg_perbll.shape, llg_perbll.ndim)
     if llg_perbll**2 < obs_eps:
         llg_perbll = 0
     a = np.append(g_ll, llg_perbll)
