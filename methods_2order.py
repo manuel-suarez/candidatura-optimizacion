@@ -193,7 +193,7 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
         llg_perbll = 0
     a = [g_ll; llg_perbll] # TODO corregir
     # Case 1
-    if (lambda_min > 0) and (phi(0, delta, a, lambdap) >= 0): # TODO implementar phi
+    if (lambda_min > 0) and (phi(0, delta, a, lambdap) >= 0):
         sigma_star = 0
         tau_star = gamma + sigma_star
         p_star = equation_p1(tau_star, g, Psi, Minv) # TODO implementar
