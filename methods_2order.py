@@ -12,7 +12,7 @@ QR   = sp.linalg.qr
 
 # Algorithm 1: L-SR1 Trust-Region (L-SR1-TR) Method
 # Erway, et. al., p. 8
-def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
+def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     '''
         Stochastic SR1 Trust-region scheme (MB-LSR1)
         Griffin, et. al.
@@ -57,20 +57,20 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     delta_0	    = gd_params['delta_0']
     eps	        = gd_params['eps']
     gamma_0	    = gd_params['gamma_0']
-    tau_1	    = gd_params['tau_1']
-    tau_2	    = gd_params['tau_2']
-    tau_3	    = gd_params['tau_3']
-    eta_1	    = gd_params['eta_1']
-    eta_2	    = gd_params['eta_2']
-    eta_3	    = gd_params['eta_3']
-    eta_4       = gd_params['eta_4']
-    alpha	    = gd_params['alpha']
-    mu	        = gd_params['mu']
+    #tau_1	    = gd_params['tau_1']
+    #tau_2	    = gd_params['tau_2']
+    #tau_3	    = gd_params['tau_3']
+    #eta_1	    = gd_params['eta_1']
+    #eta_2	    = gd_params['eta_2']
+    #eta_3	    = gd_params['eta_3']
+    #eta_4       = gd_params['eta_4']
+    #alpha	    = gd_params['alpha']
+    #mu	        = gd_params['mu']
     # Variables para el muestreo aleatorio de los lotes (batch size)
     (high, dim) = f_params['X'].shape
     # Inicialización de variables
-    S = []
-    Y = []
+    S = np.array([])
+    Y = np.array([])
     Theta = []
     theta = theta_0
     delta = delta_0
@@ -89,12 +89,23 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
         norm_g = NORM(g)
 
         # Trust-region subproblem (calc of p star with Algorithm 2)
-        if iter == 0 or len(S) == 0:                    # En la primera iteración o siempre que se haya hecho reset a la lista
+        if iter == 0 or S.shape[0] == 0:                    # En la primera iteración o siempre que se haya hecho reset a la lista
             p = -delta * (g / norm_g)
             Bp = gamma * p
         else:
             p = TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv)         # Línea 7
-            Bp = gamma * p + Psi @ (np.linalg.solve(Minv, Psi.T.dot(p)))
+            print("Subproblem p =", p, p.shape, p.ndim)
+            print("Psi =", Psi, Psi.shape, Psi.ndim)
+            print("Minv =", Minv, Minv.shape, Minv.ndim)
+            PsiTp = Psi.T.dot(p)
+            print("PsiTp =", PsiTp, PsiTp.shape, PsiTp.ndim)
+            if Minv.ndim == 0:
+                tmp = Psi * (PsiTp / Minv)
+            else:
+                tmp = Psi @ SOLVE(Minv, PsiTp)
+            print("tmp =", tmp, tmp.shape, tmp.ndim)
+            Bp = gamma * p + tmp
+        print("Bp =", Bp, Bp.shape, Bp.ndim)
 
         Q_p = p.T.dot(g + 0.5*Bp)
         norm_p = NORM(p)
@@ -133,62 +144,115 @@ def L_STR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
         delta = delta_new
 
         # Update conditions
+        #print("Update conditions", iter)
         y_Bs = y - Bp
         if np.abs(s.T.dot(y_Bs)) > 1e-8 * norm_p * NORM(y_Bs):
-            S.append(s)
-            Y.append(y)
+            if iter == 0:
+                S = s
+                Y = y
+            else:
+                S = np.vstack((S, s))
+                Y = np.vstack((Y, y))
             # Removemos el primer elemento de acuerdo con el tamaño de la memoria
-            if (len(S) > mem_size):
-                S.pop(0)
-                Y.pop(0)
+            if (S.ndim > 1 and S.shape[0] > mem_size):
+                S = S[1:, :]
+                Y = Y[1:, :]
             # A partir de los vectores de curvatura construimos las matrices para el subproblema de la región de confianza
-            while (len(S) > 0):
-                SY = np.array(S).T.dot(np.array(Y))
-                SS = np.array(S).T.dot(np.array(S))
-                LDLt = np.tril(SY) + np.tril(SY).T
+            #print(S.shape, S.ndim, len(S))
+            while (S.shape[0] > 0):
+                #print("Curvature pairs", S.shape[0])
+                #print("S", S, S.ndim, S.shape)
+                #print("Y", Y, Y.ndim, Y.shape)
+                SY = S.T.dot(Y)
+                #print("SY", SY, SY.ndim, SY.shape)
+                SS = S.T.dot(S)
+                #print("SS", SS, SS.ndim, SS.shape)
+                if SY.ndim == 0:
+                    LDLt = SY
+                    eig_val = SY
+                    lambda_hat_min = SY
+                else:
+                    LDLt = np.tril(SY) + np.tril(SY,-1).T
+                    eig_val = EIG(LDLt, SS)[0]
+                    print("eig_val =", eig_val)
+                    print("eig_val =", eig_val, eig_val.shape, eig_val.ndim)
+                    lambda_hat_min = np.min(eig_val)
+                #print("LDLt", LDLt)
+                #print("eig_val", eig_val)
 
-                eig_val = EIG(LDLt, SS)
-                lambda_hat_min = min(eig_val)
                 if lambda_hat_min > 0:
                     gamma = max(0.5*lambda_hat_min, 1e-6)
                 else:
                     gamma = min(1.5*lambda_hat_min, -1e-6)
 
                 Minv = (LDLt - gamma * SS)  # Minv = (L+D+Lt-St@B@S)
-                Psi = np.array(Y) - gamma * S         # Psi = Y-B@S
+                #print("Minv", Minv, Minv.ndim, Minv.shape, RANK(Minv))
+                Psi = Y - gamma * S         # Psi = Y-B@S
+                print("Psi", Psi, Psi.ndim, Psi.shape, RANK(Psi))
 
                 # Se verifica que las matrices sean de rango completo
-                if Psi.shape[1] == RANK(Psi) and Minv.shape[1] == RANK(Minv):
+                RANK_Psi = RANK(Psi)
+                RANK_Minv = RANK(Minv)
+                if ((Psi.ndim <= 1 and RANK_Psi == 1) or (Psi.ndim > 1 and Psi.shape[1] == RANK(Psi))) and \
+                   ((Minv.ndim <= 1 and RANK_Minv == 1) or (Minv.ndim > 1 and Minv.shape[1] == RANK(Minv))):
                     break
                 else:
                     # Eliminamos vectores de curvatura para recalcular las matrices
-                    S.pop(0)
-                    Y.pop(0)
+                    S = S[1:, :]
+                    Y = Y[1:, :]
 
     return np.array(Theta)
 
 def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     obs_eps = 1e-10
     # Descomposición
-    Q, R = QR(Psi, mode='economic')
-    RMR = R.dot(SOLVE(Minv, R.T))
+    print("Psi", Psi, Psi.shape, Psi.ndim)
+    if Psi.ndim == 1:
+        print("Reshaping...")
+        Psi = np.reshape(Psi, (Psi.shape[0],1))
+    print("Psi", Psi, Psi.shape, Psi.ndim)
+    Q, R = QR(Psi, mode="economic")
+    print("Q", Q, Q.shape, Q.ndim)
+    print("R", R, R.shape, R.ndim)
+    print("Minv", Minv, Minv.shape, Minv.ndim)
+    if Minv.ndim == 0:
+        RMR = R * (R.T / Minv)
+    else:
+        RMR = R.dot(SOLVE(Minv, R.T))
+    print("RMR", RMR, RMR.shape, RMR.ndim)
     RMR = (RMR + RMR.T)/2
+    print("RMR", RMR, RMR.shape, RMR.ndim)
     # Eingenvalores
     W, VR = EIG(RMR, right=True)
+    print("W", W, W.shape, W.ndim)
+    print("VR", VR, VR.shape, VR.ndim)
     Wd = np.diag(W)
-    lambda_hat = Wd.sort(axis=1)
-    idxs = Wd.argsort(axis=1)
+    print("Wd", Wd, Wd.shape, Wd.ndim)
+    lambda_hat = np.sort(Wd)
+    print("lambda_hat", lambda_hat, lambda_hat.shape, lambda_hat.ndim)
+    # TODO revisar cómo obtener los índices (está dando resultados vectores)
+    idxs = np.argsort(Wd)
+    print("idxs", idxs, idxs.shape, idxs.ndim)
+    # TODO revisar por qué U resulta de 3 dimensiones
     U = VR[:,idxs]
+    print("U", U, U.shape, U.ndim)
     lambda1 = lambda_hat + gamma
+    print("lambda1", lambda1, lambda1.shape, lambda1.ndim)
     lambdap = np.append(lambda1, gamma)
+    print("lambdap", lambdap, lambdap.shape, lambdap.ndim)
     # Mínimo eigenvalor
     lambdap = lambdap * (np.abs(lambdap) > obs_eps)
     lambda_min = min(lambdap[0], gamma)
     #
     P_ll = Q.dot(U)
     g_ll = P_ll.T.dot(g)
-    llg_perbll = np.sqrt(np.abs(g.T.dot(g) - g_ll.T.dot(g_ll)))
-    if llg_perbll^2 < obs_eps:
+    gTg = g.T.dot(g)
+    print("gTg =", gTg, gTg.shape, gTg.ndim)
+    g_llTg_ll = g_ll.T.dot(g_ll)
+    print("g_llTg_ll =", g_llTg_ll, g_llTg_ll.shape, g_llTg_ll.ndim)
+    llg_perbll = np.sqrt(np.abs(gTg - g_llTg_ll))
+    print("llg_perbll =", llg_perbll, llg_perbll.shape, llg_perbll.ndim)
+    if llg_perbll**2 < obs_eps:
         llg_perbll = 0
     a = np.append(g_ll, llg_perbll)
     # Case 1
@@ -600,3 +664,4 @@ def Orthonormal_Basis(S,Y, gamma):
         Bkinv = np.linalg.inv(Bk)
         ps = - Bkinv @ gk
     else:
+        pass

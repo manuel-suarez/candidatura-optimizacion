@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import linear_model, datasets
 from methods_1order import *
-from methods_2order import L_STR1_TR
+from methods_2order import L_SR1_TR
 
 n_samples = 500
 X, y = datasets.make_regression(n_samples=n_samples,
@@ -21,6 +21,15 @@ plt.scatter(X[:],y[:], marker='.')
 
 
 # -------------------------------------------------------------
+def func_quadratic(theta, f_params):
+    '''
+    Funcion de costo
+            sum_i (theta@x[i]-y[i])**2
+    '''
+    X = f_params['X']
+    y = f_params['y']
+    return np.sum((theta[0] * X + theta[1] -y)**2)
+
 def grad_quadratic(theta, f_params):
     '''
     Gradiente de la funcion de costo
@@ -33,10 +42,18 @@ def grad_quadratic(theta, f_params):
     partial0 = err
     partial1 = X * partial0
     gradient = np.concatenate((partial1, partial0), axis=1)
+    print(gradient.shape)
     return np.sum(gradient, axis=1)
 
 
 # -------------------------------------------------------------
+def func_exp(theta, f_params):
+    kappa = f_params['kappa']
+    X = f_params['X']
+    y = f_params['y']
+    err = theta[0] * X + theta[1] - y
+    return np.sum(1 - np.exp(-kappa * err ** 2))
+
 def grad_exp(theta, f_params):
     '''
     Gradiente de la funcion de costo
@@ -74,8 +91,14 @@ f_params={'kappa' : 0.01,
           'X'     : X ,
           'y'     : y}
 
+# Second order methods
+ThetaLSR1TR = L_SR1_TR(theta_0=theta, func=func_exp, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('L-SR1-TR, Inicio:', theta, '-> Fin:', ThetaLSR1TR[-1,:])
+
+# First order methods
 ThetaGD = GD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
 print('GD, Inicio:', theta,'-> Fin:', ThetaGD[-1,:])
+exit(0)
 
 ThetaSGD = SGD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
 print('SGD, Inicio:', theta,'-> Fin:', ThetaSGD[-1,:])
