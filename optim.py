@@ -74,29 +74,23 @@ f_params={'kappa' : 0.01,
           'X'     : X ,
           'y'     : y}
 
-ThetaGD = GD(theta=theta, grad=grad_exp,
-             gd_params=gd_params, f_params=f_params)
-print('Inicio:', theta,'-> Fin:', ThetaGD[-1,:])
+ThetaGD = GD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('GD, Inicio:', theta,'-> Fin:', ThetaGD[-1,:])
 
-ThetaSGD = SGD(theta=theta, grad=grad_exp,
-               gd_params=gd_params, f_params=f_params)
-print('Inicio:', theta,'-> Fin:', ThetaSGD[-1,:])
+ThetaSGD = SGD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('SGD, Inicio:', theta,'-> Fin:', ThetaSGD[-1,:])
 
-ThetaMGD = MGD(theta=theta, grad=grad_exp,
-               gd_params=gd_params, f_params=f_params)
-print('Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
+ThetaMGD = MGD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('MGD, Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
 
-ThetaNAG = NAG(theta=theta, grad=grad_exp,
-               gd_params=gd_params, f_params=f_params)
-print('Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
+ThetaNAG = NAG(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('NAG, Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
 
-ThetaADADELTA = ADADELTA(theta=theta, grad=grad_exp,
-                         gd_params=gd_params, f_params=f_params)
-print('Inicio:', theta,'-> Fin:', ThetaADADELTA[-1,:])
+ThetaADADELTA = ADADELTA(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('ADADELTA, Inicio:', theta,'-> Fin:', ThetaADADELTA[-1,:])
 
-ThetaADAM = ADAM(theta=theta, grad=grad_exp,
-                 gd_params=gd_params, f_params=f_params)
-print('Inicio:', theta,'-> Fin:', ThetaADAM[-1,:])
+ThetaADAM = ADAM(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
+print('ADAM, Inicio:', theta,'-> Fin:', ThetaADAM[-1,:])
 
 Tmax=100
 plt.figure(figsize=(10,10))
