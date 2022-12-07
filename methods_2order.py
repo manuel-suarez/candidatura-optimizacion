@@ -182,13 +182,40 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
     U = VR[:,idxs]
     lambda1 = lambda_hat + gamma
     lambdap = [lambda1;gamma] # TODO corregir
+    # Mínimo eigenvalor
+    lambdap = lambdap * (np.abs(lambdap) > obs_eps)
+    lambda_min = min(lambdap[0], gamma)
+    #
     P_ll = Q.dot(U)
     g_ll = P_ll.T.dot(g)
     llg_perbll = np.sqrt(np.abs(g.T.dot(g) - g_ll.T.dot(g_ll)))
     if llg_perbll^2 < obs_eps:
         llg_perbll = 0
     a = [g_ll; llg_perbll] # TODO corregir
-    # Cases to solve
+    # Case 1
+    if (lambda_min > 0) and (phi(0, delta, a, lambdap) >= 0): # TODO implementar phi
+        sigma_star = 0
+        tau_star = gamma + sigma_star
+        p_star = equation_p1(tau_star, g, Psi, Minv) # TODO implementar
+    # Case 2
+    elif (lambda_min <= 0) and (phi(-lambda_min, delta, a, lambdap) >= 0):
+        sigma_star = -lambda_min
+        p_star = equation_p2(sigma_star, gamma, g, a, lambdap, P_ll, g_ll) # TODO implementar
+    # Case 3
+        if lambda_min < 0:
+            p_hat = p_star
+            p_star = equation_p3(lambda_min, delta, p_hat, lambdap, P_ll) # TODO implementar
+    else:
+        if lambda_min > 0:
+            sigma_star = newton_method(0, delta, a, lambdap) # TODO implementar
+        else:
+            sigma_hat = max(np.abs(a)/delta - lambdap)
+            if sigma_hat > -lambda_min
+                sigma_star = newton_method(sigma_hat, delta, a, lambdap)
+            else:
+                sigma_star = newton_method(-lambda_min, delta, a, lambda)
+        tau_star = sigma_star + gamma
+        p_star = equation_p1(tau_star, g, Psi, Minv)
 
 
 
