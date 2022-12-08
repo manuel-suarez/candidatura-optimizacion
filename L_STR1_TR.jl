@@ -46,7 +46,7 @@ while true
         p       = -delta*(g/llgll)
         Bp      =  γ*p
     else
-        p       = TRsubproblem_solver_OBS(Δ, γ, g, Ψ, Minv)
+        p       = TRsubproblem_solver_OBS(delta, γ, g, Ψ, Minv)
         Bp      = γ*p + Ψ*(Minv\(Ψ'*p))
     end
 
@@ -78,16 +78,16 @@ while true
     # Actualización del radio de la región de confianza
     if ρ > 0.75
         if norm(p) ≤ 0.8*Δ
-            Δ_new = Δ
+            delta_new = delta
         else
-            Δ_new = 2*Δ
+            delta_new = 2*delta
         end
     elseif (0.1 ≤ ρ && ρ ≤ 0.75)
-        Δ_new = Δ
+        delta_new = delta
     else
-        Δ_new = 0.5*Δ
+        delta_new = 0.5*delta
     end
-    Δ = Δ_new
+    delta = delta_new
 
     # Condición de Actualización
     y_Bs        = y - Bp
