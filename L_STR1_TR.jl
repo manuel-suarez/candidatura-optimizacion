@@ -1,19 +1,27 @@
 # Definición de librerías
 using LinearAlgebra
+using Statistics
+using MLJBase
 # Definición de la función
 function func(w, X, y)
-    
+    κ = -0.01
+    err = k.*(w[1] * X.x1 .+ w[2] - y)
+    return sum(1 .- exp.(err.^2))
 end
 # Definición del gradiente
 function grad(w, X, y)
-    
+    κ = 0.01
+    err = w[1]*X.x1 .+ w[2] - y
+    partial0 = err .* exp.(-κ.*err.^2)
+    partial1 = X.x1 .* partial0
+    return mean([partial1, partial0], dims=1)
 end
 
 S           = [];
 Y           = [];
 
 tol         = 1e-5;
-Δ           = 1;
+delta           = 1;
 γ           = 1;
 
 epoch       = 10;
@@ -24,22 +32,21 @@ skip        = 0;
 k           = 0;
 epoch_k     = 0;
 # Definición de los datos de entrada (generados aleatoriamente)
-X           = 0
-y           = 0
+pX, py      = make_regression(100, 1; noise=0.5, sparse=0.2, outliers=0.1)
 # Definición del vector de entrada (generado aleatoriamente)
 w           = [1,1]
 while true
     println("=======================> Iteración $(k) <===================");
-    f           = func(w, X, y)
-    g           = grad(w, X, y)
+    f           = func(w, pX, py)
+    g           = grad(w, pX, py)
     llgll       = norm(g)
 
     # Trust-Region subproblem
     if k == 0 || size(S,2) == 0
-        p       = -δ*(g/llgll)
+        p       = -delta*(g/llgll)
         Bp      =  γ*p
     else
-        p       = TRsubproblem_solver_OBS(δ, γ, g, Ψ, Minv)
+        p       = TRsubproblem_solver_OBS(Δ, γ, g, Ψ, Minv)
         Bp      = γ*p + Ψ*(Minv\(Ψ'*p))
     end
 
@@ -48,8 +55,8 @@ while true
 
     # Actualización del vector de pesos
     w_new       = w + p
-    f_new       = func(w_new, X, y)
-    g_new       = grad(w_new, X, y)
+    f_new       = func(w_new, pX, py)
+    g_new       = grad(w_new, pX, py)
 
     # Vectores de curvatura (s,y)
     s           = p
