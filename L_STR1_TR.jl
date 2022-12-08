@@ -13,7 +13,7 @@ S           = [];
 Y           = [];
 
 tol         = 1e-5;
-δ           = 1;
+Δ           = 1;
 γ           = 1;
 
 epoch       = 10;
@@ -58,6 +58,31 @@ while true
     # Reduction ratio
     ρ           = (f_new - f) / Q_p
 
+    # Condición de aceptación del incremento
+    if ρ > 1e-4
+    end
+
+    # Condición de paro
+    if llgll < tol
+        println("Condición de paro")
+        return
+    end
+
+    # Actualización del radio de la región de confianza
+    if ρ > 0.75
+        if norm(p) ≤ 0.8*Δ
+            Δ_new = Δ
+        else
+            Δ_new = 2*Δ
+        end
+    elseif (0.1 ≤ ρ && ρ ≤ 0.75)
+        Δ_new = Δ
+    else
+        Δ_new = 0.5*Δ
+    end
+    Δ = Δ_new
+
+    
 
     global k = k + 1;
 end
