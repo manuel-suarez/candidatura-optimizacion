@@ -96,7 +96,7 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
     # ya que las dimensiones de los vectores y matrices que dependen de k deben considerar el efecto de reducción en e
     for iter in range(nIter):                         # Línea 2
         k = iter+1
-        print(f"{30*'='}> Iteración {k} <{30*'='}")
+        print(f"{30*'='}> Iteración {k}, n={n}, k={k}, e={e} <{30*'='}")
         # Muestreamos una lista con índices aleatorios para la conformación del lote
         sample_idxs = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
         # Obtenemos la muestra de observaciones y etiquetas
@@ -119,7 +119,7 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
             p = -delta * (g / norm_g)
             Bp = gamma * p
         else:
-            p = TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv)         # Línea 7
+            p = TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv, n, k, e)         # Línea 7
             #print("Subproblem p =", p, p.shape, p.ndim)
             #print("Psi =", Psi, Psi.shape, Psi.ndim)
             #print("Minv =", Minv, Minv.shape, Minv.ndim)
@@ -297,8 +297,9 @@ def L_SR1_TR(theta_0=[], func=None, grad=None, gd_params={}, f_params={}):
 
     return np.array(Theta)
 
-def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
+def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv, n, k, e):
     obs_eps = 1e-10
+    print("Subproblem solver!")
     # Descomposición
     #print("Psi", Psi, Psi.shape, Psi.ndim)
     if Psi.ndim == 1:
@@ -306,6 +307,10 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
         Psi = np.reshape(Psi, (Psi.shape[0],1))
     #print("Psi", Psi, Psi.shape, Psi.ndim)
     Q, R = QR(Psi, mode="economic")
+    print_v("Q", Q)
+    check_dims(Q, 2, n, k-e-1) # Restamos 1 porque el solver se ejecuta a partir de la 2a iteración
+    print_v("R", R)
+    check_dims(R, 2, k-e-1, k-e-1)
     #print("Q", Q, Q.shape, Q.ndim)
     #print("R", R, R.shape, R.ndim)
     #print("Minv", Minv, Minv.shape, Minv.ndim)
@@ -315,44 +320,77 @@ def TRsubproblem_solver_OBS(delta, gamma, g, Psi, Minv):
         RMR = R.dot(SOLVE(Minv, R.T))
     #print("RMR", RMR, RMR.shape, RMR.ndim)
     RMR = (RMR + RMR.T)/2
+    print_v("RMR", RMR)
+    check_dims(RMR, 2, k-e-1, k-e-1)
     #print("RMR", RMR, RMR.shape, RMR.ndim)
-    # Eingenvalores
+    # Eingenvalores, Eigenvectores
     W, VR = EIG(RMR, right=True)
+    print_v("W", W)
+    check_dims(W, 1, k-e-1)
+    print_v("VR", VR)
+    check_dims(VR, 2, k-e-1, k-e-1)
     #print("W", W, W.shape, W.ndim)
     #print("VR", VR, VR.shape, VR.ndim)
     Wd = W
     #print("Wd", Wd, Wd.shape, Wd.ndim)
     lambda_hat = np.sort(Wd)
+    print_v("lambda_hat", lambda_hat)
+    check_dims(lambda_hat, 1, k-e-1)
     #print("lambda_hat", lambda_hat, lambda_hat.shape, lambda_hat.ndim)
     # TODO revisar cómo obtener los índices (está dando resultados vectores)
     idxs = np.argsort(Wd)
+    print_v("idxs", idxs)
+    check_dims(idxs, 1, k-e-1)
     #print("idxs", idxs, idxs.shape, idxs.ndim)
     # TODO revisar por qué U resulta de 3 dimensiones
     U = VR[:,idxs]
+    print_v("U", U)
+    check_dims(U, 2, k-e-1, k-e-1)
     #print("U", U, U.shape, U.ndim)
     lambda1 = lambda_hat + gamma
+    print_v("lambda1", lambda1)
+    check_dims(lambda1, 1, k-e-1)
     #print("lambda1", lambda1, lambda1.shape, lambda1.ndim)
     lambdap = np.append(lambda1, gamma)
+    print_v("lambdap", lambdap)
+    check_dims(lambdap, 1, k-e) # No le restamos uno ya que se le añadió un elemento
     #print("lambdap", lambdap, lambdap.shape, lambdap.ndim)
     # Mínimo eigenvalor
     lambdap = lambdap * (np.abs(lambdap) > obs_eps)
+    print_v("lambdap", lambdap)
+    check_dims(lambdap, 1, k-e) # No le restamos uno ya que se le añadió un elemento
     lambda_min = min(lambdap[0], gamma)
+    print_v("lambda_min", lambda_min)
+    check_dims(lambda_min, 0)
     #
     #print("Q =", Q, Q.shape, Q.ndim)
     #print("U =", U, U.shape, U.ndim)
     P_ll = Q.dot(U)
+    print_v("P_ll", P_ll)
+    check_dims(P_ll, 2, n, k-e-1)
     #print("P_ll =", P_ll, P_ll.shape, P_ll.ndim)
     g_ll = P_ll.T.dot(g)
+    print_v("g_ll", g_ll)
+    check_dims(g_ll, 2, k-e-1, 1)
     #print("g_ll =", g_ll, g_ll.shape, g_ll.ndim)
     gTg = g.T.dot(g)
+    print_v("gTg", gTg)
+    check_dims(gTg, 2, 1, 1) # Debería ser escalar
     #print("gTg =", gTg, gTg.shape, gTg.ndim)
     g_llTg_ll = g_ll.T.dot(g_ll)
+    print_v("g_llTg_ll", g_llTg_ll)
+    check_dims(g_llTg_ll, 2, 1, 1) # Debería ser escalar
     #print("g_llTg_ll =", g_llTg_ll, g_llTg_ll.shape, g_llTg_ll.ndim)
     llg_perbll = np.sqrt(np.abs(gTg - g_llTg_ll))
+    print_v("llg_perbll", llg_perbll)
+    check_dims(llg_perbll, 2, 1, 1) # Debería ser un escalar
     #print("llg_perbll =", llg_perbll, llg_perbll.shape, llg_perbll.ndim)
     if llg_perbll**2 < obs_eps:
         llg_perbll = 0
     a = np.append(g_ll, llg_perbll)
+    print_v("a", a)
+    check_dims(a, 1, k-e)
+    # TODO aquí vamos
     # Case 1
     if (lambda_min > 0) and (phi(0, delta, a, lambdap) >= 0):
         sigma_star = 0
