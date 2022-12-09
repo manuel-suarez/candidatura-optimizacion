@@ -2,10 +2,13 @@
 using LinearAlgebra
 using Statistics
 using MLJBase
+include("TSsubproblem_solver_OBS.jl")
 
 function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
     S           = [];
     Y           = [];
+    Ψ           = [];
+    Minv        = [];
 
     tol         = 1e-5;
     delta       = 1;
@@ -18,9 +21,10 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
     skip        = 0;
     k           = 0;
     epoch_k     = 0;
-
+    Θ = Vector{Float64}()
+    
     for iter in 1:nIter
-        println("=======================> Iteración $(iter), k=$(k) <===================");
+        #= println("=======================> Iteración $(iter), k=$(k) <==================="); =#
         f           = func(θ, f_params...)
         g           = grad(θ, f_params...)
         grad(θ, f_params...)
@@ -46,17 +50,17 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
         # Vectores de curvatura (s,y)
         s           = p
         y           = g_new - g
-        println("s=$(s)")
-        println("y=$(y)")
-
+        
         # Reduction ratio
-        println(size(f_new - f))
-        println(size(Q_p))
         ρ           = (f_new - f) / Q_p
 
         # Condición de aceptación del incremento
         if ρ > 1e-4
+            θ = θ_new
+            f = f_new
+            g = g_new
         end
+        append!(Θ, θ)
 
         # Condición de paro
         if llgll < tol
@@ -81,7 +85,7 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
         # Condición de Actualización
         y_Bs        = y - Bp
         if abs((s'*y_Bs)[]) > 1e-8*llpll*norm(y_Bs)
-            println("Curvature pairs")
+            #println("Curvature pairs")
             if k == 0
                 S = s
                 Y = y
@@ -89,23 +93,23 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
                 S = [S s]
                 Y = [Y y]
             end
-            println(S)
-            println(Y)
             if (size(S,2) > lim_m)
                 S = S[:, 2:end]
                 Y = Y[:, 2:end]
             end
 
+            if size(S,2) == 0
+                println("S is empty!")
+            end
+
             while (size(S, 2) > 0)                
                 SY      = S'*Y
                 SS      = S'*S
-                println(SY)
                 if size(SY) == ()
                     LDLt = SY
                 else
                     LDLt = tril(SY) + tril(SY,-1)'
                 end
-                println(LDLt)
                 eig_val = eigen(LDLt,SS).values
                 λHat_min= minimum(eig_val)
                 if λHat_min > 0
@@ -115,13 +119,12 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
                 end
 
                 Minv    = (LDLt - γ*SS)
-                Psi     = Y - γ*S
+                Ψ       = Y - γ*S
 
-                println(Psi)
-                if size(Psi,2) == rank(Psi) && rank(Minv) == size(Minv,2)
+                if size(Ψ,2) == rank(Ψ) && rank(Minv) == size(Minv,2)
                     break
                 else
-                    println("Psi is NOT full column rank! or M is not invertible!")
+                    #println("Psi is NOT full column rank! or M is not invertible!")
                     S = S[:, 2:end]
                     Y = Y[:, 2:end]
                 end
@@ -130,4 +133,5 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
 
         k = k + 1;
     end
+    return Θ
 end
