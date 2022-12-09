@@ -1,3 +1,8 @@
+using LinearAlgebra
+using Distributions
+using Statistics
+using MLJBase
+
 # -------------------------------------------------------------
 # condición inicial
 θ= 10 * rand(Normal(), 2, 1)
@@ -5,7 +10,8 @@
 # parámetros del optimizador
 α = 0.95
 η = 0.9
-batch_size = 100
+μ = 0.9
+batch_size = 300
 # -------------------------------------------------------------
 # parámetros de la función objetivo
 κ = 0.01
@@ -26,17 +32,6 @@ println("θ =$(θ): size=$(size(θ)), typeof=$(typeof(θ))")
 println("fx=$(f): size=$(size(f)), typeof=$(typeof(f))")
 println("∇ =$(g): size=$(size(g)), typeof=$(typeof(g))")
 
-#= parámetros del algoritmo
-             'alphaADADELTA'  : 0.7,
-             'alphaADAM'      : 0.95,
-             'mem_size'       : 20,
-             'delta_0'        : 1,
-             'gamma_0'        : 1,
-             'eps'            : 1e-5,
-             'eta'            : 0.9,
-             'eta1'           : 0.9,
-             'eta2'           : 0.999}
-=#
 f_params = (Xt=Xt.x1, yt=yt, κ=κ)
 println("Optimización por métodos de primer orden")
 # First order methods
@@ -70,6 +65,9 @@ println("Optimización por métodos de segundo orden")
 # Second order methods
 Θ_SR1TR = LSR1TR(θ, func_exp, grad_exp, f_params, nIter, α, batch_size)
 println("SR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Pasos: $(size(Θ_SR1TR, 2)-1), f(x)=$(func_exp(Θ_SR1TR[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_SR1TR[1:end,end], f_params...))")
+
+Θ_SSR1TR = LSSR1TR(θ, func_exp, grad_exp, f_params, nIter, α, μ, batch_size)
+println("SSR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Pasos: $(size(Θ_SR1TR, 2)-1), f(x)=$(func_exp(Θ_SR1TR[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_SR1TR[1:end,end], f_params...))")
 
 #=
 Tmax=100
