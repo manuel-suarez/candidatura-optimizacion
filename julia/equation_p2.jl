@@ -8,7 +8,7 @@ function equation_p2(σ, γ, g, a, λ, P_ll, g_ll)
     if abs(γ + σ) < eq_tol
         p = -P_ll*v[1:c-1]
     else
-        p = -P_ll*v[1:c-1] - (g - P_ll*g_LL)/(γ+σ)
+        p = -P_ll*v[1:c-1] - (g - P_ll*g_ll)/(γ+σ)
     end
     return p
 end
