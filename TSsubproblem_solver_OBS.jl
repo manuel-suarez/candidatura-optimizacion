@@ -1,3 +1,9 @@
+include("phi.jl")
+include("equation_p1.jl")
+include("equation_p2.jl")
+include("equation_p3.jl")
+include("newton_method.jl")
+
 function TRsubproblem_solver_OBS(Δ, γ, g, Ψ, Minv)
     obs_tol             = 1e-10    
     # Factorización QR
@@ -10,16 +16,16 @@ function TRsubproblem_solver_OBS(Δ, γ, g, Ψ, Minv)
     λ_hat               = sort(eig_va)
     idx                 = sortperm(eig_va)
     U                   = eig_ve[:,idx]
-    λ1                  = λhat + γ
+    λ1                  = λ_hat .+ γ
     λ                   = [λ1; γ]
     # Min eigenvalor
-    λ                   = λ.*(abs.(lambda) .> obs_tol)
-    λmin                = min(lambda[1], γ)
+    λ                   = λ.*(abs.(λ) .> obs_tol)
+    λ_min               = min(λ[1], γ)
     # P_LL, |p_perb|, a
     P_ll                = Q*U
     g_ll                = P_ll'*g
-    gTg                 = g'*g
-    g_llTg_ll           = g_ll'*g_ll
+    gTg                 = (g'*g)[]
+    g_llTg_ll           = (g_ll'*g_ll)[]
     llg_perbll          = sqrt(abs(gTg - g_llTg_ll))
 
     if llg_perbll^2 < obs_tol
@@ -46,7 +52,7 @@ function TRsubproblem_solver_OBS(Δ, γ, g, Ψ, Minv)
         if λ_min > 0
             σ_star = newton_method(0, Δ, a, λ)
         else
-            σ_hat = max(abs(a)./delta - λ)
+            σ_hat = maximum(abs.(a)./Δ - λ)
             if σ_hat > -λ_min
                 σ_star = newton_method(σ_hat, Δ, a, λ)
             else
