@@ -13,7 +13,7 @@ function equation_p3(λ_min, Δ, p_hat, λ, P_ll)
         found = 0
         for i in 1:k
             e[i] = 1
-            u_min = e - P_ll*P_ll[i,:]'
+            u_min = e - P_ll*P_ll[i,1:end]'
             if (norm(u_min) > eq_tol)
                 found = 1
                 break
