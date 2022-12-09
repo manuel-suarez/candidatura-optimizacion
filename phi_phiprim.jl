@@ -1,7 +1,7 @@
 function phi_phiprim(σ, Δ, a, λ)
     obs_tol = 1e-10
-    t = λ + σ
-    if (sum(abs.(a) .< obs_tol) > 0) || (sum(abs(t) < obs_tol) > 0)
+    t = λ .+ σ
+    if (sum(abs.(a) .< obs_tol) > 0) || (sum(abs.(t) .< obs_tol) > 0)
         llpll2 = 0
         llpll_prim = 0
         for i in 1:length(a)
@@ -13,12 +13,12 @@ function phi_phiprim(σ, Δ, a, λ)
             end
         end
         llpll = sqrt(llpll2)
-        phi = 1/llpll - 1/delta
-        phi_prim = llpll_prim / llpll^3
-        return phi, phi_phiprim
+        ϕ = 1/llpll - 1/Δ
+        ϕ_prim = llpll_prim / llpll^3
+        return ϕ, ϕ_prim
     end
     llpll = norm(a./t)
-    phi = 1/llpll - 1/delta
-    phi_prim = sum(a.^2 ./ t.^3) / llpll^3
-    return phi, phi_phiprim
+    ϕ = 1/llpll - 1/Δ
+    ϕ_prim = sum(a.^2 ./ t.^3) / llpll^3
+    return ϕ, ϕ_prim
 end

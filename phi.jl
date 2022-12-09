@@ -13,5 +13,5 @@ function phi(σ, Δ, a, λ)
         return 1/sqrt(llpll2) - 1/Δ
     end
     llpll = norm(a./t)
-    phi = 1/llpll - 1/delta
+    phi = 1/llpll - 1/Δ
 end
