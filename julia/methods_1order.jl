@@ -92,8 +92,8 @@ function ADADELTA(θ, grad, f_params, nIter, α, η)
 
     for iter in 1:nIter
         g = grad(θ, f_params...)
-        G = η * g .^ 2 + (1 - η) .* G
-        p = 1.0 / (sqrt.(G) .+ ϵ) .* g
+        G = η * g .^ 2 + (1 - η) * G
+        p = 1.0 ./ (sqrt.(G) .+ ϵ) .* g
         θ = θ - α * p
         Θ = hcat(Θ, θ)
     end
@@ -110,9 +110,9 @@ function ADAM(θ, grad, f_params, nIter, α, η1, η2)
     η2_t = η2
     for iter in 1:nIter
         g = grad(θ, f_params...)
-        p = η1 * p + (1.0 - η1) .* g
-        v = η2 * v + (1.0 - η2) .* (g .^ 2)
-        θ = θ - α * p / (sqrt(v) + ϵ)
+        p = η1 * p .+ (1.0 - η1) .* g
+        v = η2 * v .+ (1.0 - η2) .* (g .^ 2)
+        θ = θ - α * p ./ (sqrt.(v) .+ ϵ)
         η1_t *= η
         η2_t *= η
         Θ = hcat(Θ, θ)
