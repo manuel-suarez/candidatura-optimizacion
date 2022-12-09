@@ -83,89 +83,39 @@ function NAG(θ, grad, f_params, nIter, α, η)
     return Θ
 end
 
-#=
-def ADADELTA(theta=[], grad=None, gd_params={}, f_params={}):
-    '''
-    Descenso de Gradiente Adaptable (ADADELTA)
+#= Descenso de Gradiente Adaptable (ADADELTA) =#
+function ADADELTA(θ, grad, f_params, nIter, α, η)
+    ϵ = 1e-8
+    G = zeros(size(θ))
+    g = zeros(size(θ))
+    Θ = θ
 
-    Parámetros
-    -----------
-    theta     :   condicion inicial
-    grad      :   funcion que calcula el gradiente
-    gd_params :   lista de parametros para el algoritmo de descenso,
-                      nIter    = gd_params['nIter'] número de iteraciones
-                      alphaADA = gd_params['alphaADADELTA'] tamaño de paso alpha
-                      eta      = gd_params['eta']  parametro adaptación del alpha
-    f_params  :   lista de parametros para la funcion objetivo,
-                      kappa = f_params['kappa'] parametro de escala (rechazo de outliers)
-                      X     = f_params['X'] Variable independiente
-                      y     = f_params['y'] Variable dependiente
+    for iter in 1:nIter
+        g = grad(θ, f_params...)
+        G = η * g .^ 2 + (1 - η) .* G
+        p = 1.0 / (sqrt.(G) .+ ϵ) .* g
+        θ = θ - α * p
+        Θ = hcat(Θ, θ)
+    end
+    return Θ
+end
 
-    Regresa
-    -----------
-    Theta     :   trayectoria de los parametros
-                     Theta[-1] es el valor alcanzado en la ultima iteracion
-    '''
-    epsilon = 1e-8
-    nIter = gd_params['nIter']
-    alpha = gd_params['alphaADADELTA']
-    eta = gd_params['eta']
-    G = np.zeros(theta.shape)
-    g = np.zeros(theta.shape)
-    Theta = []
-    for t in range(nIter):
-        g = grad(theta, f_params=f_params)
-        G = eta * g ** 2 + (1 - eta) * G
-        p = 1.0 / (np.sqrt(G) + epsilon) * g
-        theta = theta - alpha * p
-        Theta.append(theta)
-    return np.array(Theta)
-
-def ADAM(theta=[], grad=None, gd_params={}, f_params={}):
-    '''
-    Descenso de Gradiente Adaptable con Momentum(A DAM)
-
-    Parámetros
-    -----------
-    theta     :   condicion inicial
-    grad      :   funcion que calcula el gradiente
-    gd_params :   lista de parametros para el algoritmo de descenso,
-                      nIter    = gd_params['nIter'] número de iteraciones
-                      alphaADA = gd_params['alphaADAM'] tamaño de paso alpha
-                      eta1     = gd_params['eta1'] factor de momentum para la direccion
-                                 de descenso (0,1)
-                      eta2     = gd_params['eta2'] factor de momentum para la el
-                                 tamaño de paso (0,1)
-    f_params  :   lista de parametros para la funcion objetivo,
-                      kappa = f_params['kappa'] parametro de escala (rechazo de outliers)
-                      X     = f_params['X'] Variable independiente
-                      y     = f_params['y'] Variable dependiente
-
-    Regresa
-    -----------
-    Theta     :   trayectoria de los parametros
-                     Theta[-1] es el valor alcanzado en la ultima iteracion
-    '''
-    epsilon = 1e-8
-    nIter = gd_params['nIter']
-    alpha = gd_params['alphaADAM']
-    eta1 = gd_params['eta1']
-    eta2 = gd_params['eta2']
-    p = np.zeros(theta.shape)
+#= Descenso de Gradiente Adaptable con Momentum(ADAM) =#
+function ADAM(θ, grad, f_params, nIter, α, η1, η2)
+    ϵ = 1e-8
+    p = zeros(size(θ))
     v = 0.0
-    Theta = []
-    eta1_t = eta1
-    eta2_t = eta2
-    for t in range(nIter):
-        g = grad(theta, f_params=f_params)
-        p = eta1 * p + (1.0 - eta1) * g
-        v = eta2 * v + (1.0 - eta2) * (g ** 2)
-        # p = p/(1.-eta1_t)
-        # v = v/(1.-eta2_t)
-        theta = theta - alpha * p / (np.sqrt(v) + epsilon)
-        eta1_t *= eta1
-        eta2_t *= eta2
-        Theta.append(theta)
-    return np.array(Theta)
-=#
-
+    Θ = θ
+    η1_t = η1
+    η2_t = η2
+    for iter in 1:nIter
+        g = grad(θ, f_params...)
+        p = η1 * p + (1.0 - η1) .* g
+        v = η2 * v + (1.0 - η2) .* (g .^ 2)
+        θ = θ - α * p / (sqrt(v) + ϵ)
+        η1_t *= η
+        η2_t *= η
+        Θ = hcat(Θ, θ)
+    end
+    return Θ
+end
