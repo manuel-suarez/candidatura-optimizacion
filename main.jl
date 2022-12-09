@@ -1,6 +1,6 @@
 # -------------------------------------------------------------
 # condición inicial
-θ= 10 * rand(Normal(), 2)
+θ= 10 * rand(Normal(), 2, 1)
 # -------------------------------------------------------------
 # parámetros del optimizador
 α = 0.95
@@ -18,12 +18,13 @@ n_samples = 500
 Xt, yt = make_regression(n_samples, 1; noise=0.5, rng=10)
 # -------------------------------------------------------------
 # verificación de función y gradiente
+include("functions.jl")
 println("Verificación de vector inicial y evaluación de función y gradiente")
 f = func_exp(θ, Xt.x1, yt, κ)
 g = grad_exp(θ, Xt.x1, yt, κ)
-println("θ : $(size(θ)), $(typeof(θ))")
-println("fx: $(size(f)), $(typeof(f))")
-println("∇ : $(size(g)), $(typeof(g))")
+println("θ =$(θ): size=$(size(θ)), typeof=$(typeof(θ))")
+println("fx=$(f): size=$(size(f)), typeof=$(typeof(f))")
+println("∇ =$(g): size=$(size(g)), typeof=$(typeof(g))")
 
 #= parámetros del algoritmo
              'alphaADADELTA'  : 0.7,
