@@ -1,7 +1,7 @@
 function phi(σ, Δ, a, λ)
     obs_tol = 1e-10
-    t = λ + σ
-    if (sum(abs.(a) .< obs_tol) > 0) || (sum(abs(t) < obs_tol) > 0)
+    t = λ .+ σ
+    if (sum(abs.(a) .< obs_tol) > 0) || (sum(abs.(t) .< obs_tol) > 0)
         llpll2 = 0
         for i in 1:length(a)
             if (abs(a[i]) > obs_tol) && (abs(t[i]) > obs_tol)
