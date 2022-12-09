@@ -37,20 +37,17 @@ function GD(θ0, grad, f_params, nIter, α)
     return Θ
 end
 
+#= Descenso de gradiente estocástico =#
 function SGD(θ, grad, f_params, nIter, α, batch_size)
-    #=
-    Descenso de gradiente estocástico
-    =#
-
     Θ = []
     for iter in 1:nIter
         # Obtenemos la muestra de tamaño (batch size)
         idxs = sample(axes(f_params.Xt, 1), batch_size)
         # sample
         Xt_sample = f_params.Xt[idxs]
-        y_sample = f_params.yt[idxs]
+        yt_sample = f_params.yt[idxs]
         # parametros de la funcion objetivo
-        f_params_sample = (Xt=f_params.Xt, yt=f_params.yt, κ=f_params.κ)
+        f_params_sample = (Xt=Xt_sample, yt=yt_sample, κ=f_params.κ)
         p = grad(θ, f_params_sample...)
         θ = θ - α * p
         append!(Θ, θ)
@@ -58,78 +55,36 @@ function SGD(θ, grad, f_params, nIter, α, batch_size)
     return Θ
 end
 
-#=
-def MGD(theta=[], grad=None, gd_params={}, f_params={}):
-    '''
-    Descenso de gradiente con momento (inercia)
-
-    Parámetros
-    -----------
-    theta     :   condicion inicial
-    grad      :   funcion que calcula el gradiente
-    gd_params :   lista de parametros para el algoritmo de descenso,
-                      nIter = gd_params['nIter'] número de iteraciones
-                      alpha = gd_params['alpha'] tamaño de paso alpha
-                      eta   = gd_params['eta']  parametro de inercia (0,1]
-    f_params  :   lista de parametros para la funcion objetivo,
-                      kappa = f_params['kappa'] parametro de escala (rechazo de outliers)
-                      X     = f_params['X'] Variable independiente
-                      y     = f_params['y'] Variable dependiente
-
-    Regresa
-    -----------
-    Theta     :   trayectoria de los parametros
-                     Theta[-1] es el valor alcanzado en la ultima iteracion
-    '''
-    nIter = gd_params['nIter']
-    alpha = gd_params['alpha']
-    eta = gd_params['eta']
-    p_old = np.zeros(theta.shape)
-    Theta = []
-    for t in range(nIter):
-        g = grad(theta, f_params=f_params)
-        p = g + eta * p_old
-        theta = theta - alpha * p
+#= Descenso de gradiente con momento (inercia) =#
+function MGD(θ, grad, f_params, nIter, α, η)
+    p_old = zeros(size(θ))
+    Θ = []
+    for iter in 1:nIter
+        g = grad(θ, f_params...)
+        p = g + η * p_old
+        θ = θ - α * p
         p_old = p
-        Theta.append(theta)
-    return np.array(Theta)
+        append!(Θ, θ)
+    end
+    return Θ
+end
 
-def NAG(theta=[], grad=None, gd_params={}, f_params={}):
-    '''
-    Descenso acelerado de Nesterov
+#= Descenso acelerado de Nesterov =#
+function NAG(θ, grad, f_params, nIter, α, η)
+    p = zeros(size(θ))
+    Θ = []
 
-    Parámetros
-    -----------
-    theta     :   condicion inicial
-    grad      :   funcion que calcula el gradiente
-    gd_params :   lista de parametros para el algoritmo de descenso,
-                      nIter = gd_params['nIter'] número de iteraciones
-                      alpha = gd_params['alpha'] tamaño de paso alpha
-                      eta   = gd_params['eta']  parametro de inercia (0,1]
-    f_params  :   lista de parametros para la funcion objetivo,
-                      kappa = f_params['kappa'] parametro de escala (rechazo de outliers)
-                      X     = f_params['X'] Variable independiente
-                      y     = f_params['y'] Variable dependiente
+    for iter in 1:nIter
+        pre_θ = θ - 2.0 * α * p
+        g = grad(pre_θ, f_params...)
+        p = g + η * p
+        θ = θ - α * p
+        append!(Θ, θ)
+    end
+    return Θ
+end
 
-    Regresa
-    -----------
-    Theta     :   trayectoria de los parametros
-                     Theta[-1] es el valor alcanzado en la ultima iteracion
-    '''
-    nIter = gd_params['nIter']
-    alpha = gd_params['alpha']
-    eta = gd_params['eta']
-    p = np.zeros(theta.shape)
-    Theta = []
-
-    for t in range(nIter):
-        pre_theta = theta - 2.0 * alpha * p
-        g = grad(pre_theta, f_params=f_params)
-        p = g + eta * p
-        theta = theta - alpha * p
-        Theta.append(theta)
-    return np.array(Theta)
-
+#=
 def ADADELTA(theta=[], grad=None, gd_params={}, f_params={}):
     '''
     Descenso de Gradiente Adaptable (ADADELTA)
@@ -273,6 +228,7 @@ end
 # -------------------------------------------------------------
 # parámetros del optimizador
 α = 0.95
+η = 0.9
 batch_size = 100
 # -------------------------------------------------------------
 # parámetros de la función objetivo
@@ -304,21 +260,22 @@ println("∇ : $(size(g)), $(typeof(g))")
              'eta1'           : 0.9,
              'eta2'           : 0.999}
 =#
+f_params = (Xt=Xt.x1, yt=yt, κ=κ)
 println("Optimización por métodos de primer orden")
 # First order methods
-ΘGD = GD(θ, grad_exp, (Xt=Xt.x1, yt=yt, κ=κ), nIter, α)
-println("GD, Inicio: $(ΘGD[1,:]), -> Fin: $(ΘGD[end,:])")
+Θ_GD = GD(θ, grad_exp, f_params, nIter, α)
+println("GD, Inicio: $(Θ_GD[1,:]), -> Fin: $(Θ_GD[end,:])")
 
-ThetaSGD = SGD(θ, grad_exp, (Xt=Xt.x1, yt=yt, κ=κ), nIter, α, batch_size)
-println("SGD, Inicio: $(ΘGD[1,:]), -> Fin: $(ΘGD[end,:])")
+Θ_SGD = SGD(θ, grad_exp, f_params, nIter, α, batch_size)
+println("SGD, Inicio: $(Θ_SGD[1,:]), -> Fin: $(Θ_SGD[end,:])")
+
+Θ_MGD = MGD(θ, grad_exp, f_params, nIter, α, η)
+println("MGD, Inicio: $(Θ_MGD[1,:]), -> Fin: $(Θ_MGD[end,:])")
+
+Θ_NAG = NAG(θ, grad_exp, f_params, nIter, α, η)
+println("NAG, Inicio: $(Θ_NAG[1,:]), -> Fin: $(Θ_NAG[end,:])")
 
 #=
-ThetaMGD = MGD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
-print('MGD, Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
-
-ThetaNAG = NAG(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
-print('NAG, Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
-
 ThetaADADELTA = ADADELTA(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
 print('ADADELTA, Inicio:', theta,'-> Fin:', ThetaADADELTA[-1,:])
 
