@@ -55,11 +55,9 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
         ρ           = (f_new - f) / Q_p
 
         # Condición de aceptación del incremento
-        if ρ > 1e-4
-            θ = θ_new
-            f = f_new
-            g = g_new
-        end
+        θ = θ_new
+        f = f_new
+        g = g_new
         Θ = hcat(Θ, θ)
 
         # Condición de paro
