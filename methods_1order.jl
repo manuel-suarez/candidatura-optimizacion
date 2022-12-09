@@ -37,55 +37,28 @@ function GD(θ0, grad, f_params, nIter, α)
     return Θ
 end
 
-#=
-def SGD(theta=[], grad=None, gd_params=[], f_params=[]):
-    '''
+function SGD(θ, grad, f_params, nIter, α, batch_size)
+    #=
     Descenso de gradiente estocástico
+    =#
 
-    Parámetros
-    -----------
-    theta     :   condicion inicial
-    grad      :   funcion que calcula el gradiente
-
-    gd_params :   lista de parametros para el algoritmo de descenso,
-                      nIter = gd_params['nIter'] número de iteraciones
-                      alpha = gd_params['alpha'] tamaño de paso alpha
-                      batch_size = gd_params['batch_size'] tamaño de la muestra
-
-    f_params  :   lista de parametros para la funcion objetivo,
-                      kappa = f_params['kappa'] parametro de escala (rechazo de outliers)
-                      X     = f_params['X'] Variable independiente
-                      y     = f_params['y'] Variable dependiente
-
-    Regresa
-    -----------
-    Theta     :   trayectoria de los parametros
-                     Theta[-1] es el valor alcanzado en la ultima iteracion
-    '''
-    (high, dim) = f_params['X'].shape
-    batch_size = gd_params['batch_size']
-
-    nIter = gd_params['nIter']
-    alpha = gd_params['alpha']
-
-    Theta = []
-    for t in range(nIter):
-        # Set of sampled indices
-        smpIdx = np.random.randint(low=0, high=high, size=batch_size, dtype='int32')
+    Θ = []
+    for iter in 1:nIter
+        # Obtenemos la muestra de tamaño (batch size)
+        idxs = sample(axes(f_params.Xt, 1), batch_size)
         # sample
-        smpX = f_params['X'][smpIdx]
-        smpy = f_params['y'][smpIdx]
+        Xt_sample = f_params.Xt[idxs]
+        y_sample = f_params.yt[idxs]
         # parametros de la funcion objetivo
-        smpf_params = {'kappa': f_params['kappa'],
-                       'X': smpX,
-                       'y': smpy}
+        f_params_sample = (Xt=f_params.Xt, yt=f_params.yt, κ=f_params.κ)
+        p = grad(θ, f_params_sample...)
+        θ = θ - α * p
+        append!(Θ, θ)
+    end
+    return Θ
+end
 
-        p = grad(theta, f_params=smpf_params)
-        theta = theta - alpha * p
-        Theta.append(theta)
-
-    return np.array(Theta)
-
+#=
 def MGD(theta=[], grad=None, gd_params={}, f_params={}):
     '''
     Descenso de gradiente con momento (inercia)
@@ -300,6 +273,7 @@ end
 # -------------------------------------------------------------
 # parámetros del optimizador
 α = 0.95
+batch_size = 100
 # -------------------------------------------------------------
 # parámetros de la función objetivo
 κ = 0.01
@@ -320,11 +294,8 @@ println("fx: $(size(f)), $(typeof(f))")
 println("∇ : $(size(g)), $(typeof(g))")
 
 #= parámetros del algoritmo
-gd_params = {'alpha'          : 0.95,
              'alphaADADELTA'  : 0.7,
              'alphaADAM'      : 0.95,
-             'nIter'          : 300,
-             'batch_size'     : 100,
              'mem_size'       : 20,
              'delta_0'        : 1,
              'gamma_0'        : 1,
@@ -337,12 +308,11 @@ println("Optimización por métodos de primer orden")
 # First order methods
 ΘGD = GD(θ, grad_exp, (Xt=Xt.x1, yt=yt, κ=κ), nIter, α)
 println("GD, Inicio: $(ΘGD[1,:]), -> Fin: $(ΘGD[end,:])")
-println("Done!")
+
+ThetaSGD = SGD(θ, grad_exp, (Xt=Xt.x1, yt=yt, κ=κ), nIter, α, batch_size)
+println("SGD, Inicio: $(ΘGD[1,:]), -> Fin: $(ΘGD[end,:])")
 
 #=
-ThetaSGD = SGD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
-print('SGD, Inicio:', theta,'-> Fin:', ThetaSGD[-1,:])
-
 ThetaMGD = MGD(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
 print('MGD, Inicio:', theta,'-> Fin:', ThetaMGD[-1,:])
 
@@ -355,6 +325,7 @@ print('ADADELTA, Inicio:', theta,'-> Fin:', ThetaADADELTA[-1,:])
 ThetaADAM = ADAM(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
 print('ADAM, Inicio:', theta,'-> Fin:', ThetaADAM[-1,:])
 =#
+println("Done!")
 
 #=
 Tmax=100
