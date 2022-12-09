@@ -18,10 +18,12 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
     skip        = 0;
     k           = 0;
     epoch_k     = 0;
+
     for iter in 1:nIter
-        println("=======================> Iteración $(iter) <===================");
-        f           = func(θ, pX, py)
-        g           = grad(θ, pX, py)
+        println("=======================> Iteración $(iter), k=$(k) <===================");
+        f           = func(θ, f_params...)
+        g           = grad(θ, f_params...)
+        grad(θ, f_params...)
         llgll       = norm(g)
 
         # Trust-Region subproblem
@@ -33,19 +35,23 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
             Bp      = γ*p + Ψ*(Minv\(Ψ'*p))
         end
 
-        Q_p         = p'*(g + 0.5*Bp)
+        Q_p         = (p'*(g + 0.5*Bp))[]
         llpll       = norm(p)
 
         # Actualización del vector de pesos
-        w_new       = w + p
-        f_new       = func(w_new, pX, py)
-        g_new       = grad(w_new, pX, py)
+        θ_new       = θ + p
+        f_new       = func(θ_new, f_params...)
+        g_new       = grad(θ_new, f_params...)
 
         # Vectores de curvatura (s,y)
         s           = p
         y           = g_new - g
+        println("s=$(s)")
+        println("y=$(y)")
 
         # Reduction ratio
+        println(size(f_new - f))
+        println(size(Q_p))
         ρ           = (f_new - f) / Q_p
 
         # Condición de aceptación del incremento
@@ -60,7 +66,7 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
 
         # Actualización del radio de la región de confianza
         if ρ > 0.75
-            if norm(p) ≤ 0.8*Δ
+            if norm(p) ≤ 0.8*delta
                 delta_new = delta
             else
                 delta_new = 2*delta
@@ -74,7 +80,8 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
 
         # Condición de Actualización
         y_Bs        = y - Bp
-        if abs(s'*y_Bs) > 1e-8*llpll*norm(y_Bs)
+        if abs((s'*y_Bs)[]) > 1e-8*llpll*norm(y_Bs)
+            println("Curvature pairs")
             if k == 0
                 S = s
                 Y = y
@@ -82,16 +89,23 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
                 S = [S s]
                 Y = [Y y]
             end
+            println(S)
+            println(Y)
             if (size(S,2) > lim_m)
                 S = S[:, 2:end]
                 Y = Y[:, 2:end]
             end
 
-            while (size(S, 2) > 0)
-                println("Curvature pairs")
+            while (size(S, 2) > 0)                
                 SY      = S'*Y
                 SS      = S'*S
-                LDLt    = tril(SY) + tril(SY,-1)'
+                println(SY)
+                if size(SY) == ()
+                    LDLt = SY
+                else
+                    LDLt = tril(SY) + tril(SY,-1)'
+                end
+                println(LDLt)
                 eig_val = eigen(LDLt,SS).values
                 λHat_min= minimum(eig_val)
                 if λHat_min > 0
@@ -101,8 +115,9 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
                 end
 
                 Minv    = (LDLt - γ*SS)
-                Psi     = Y - gamma*S
+                Psi     = Y - γ*S
 
+                println(Psi)
                 if size(Psi,2) == rank(Psi) && rank(Minv) == size(Minv,2)
                     break
                 else
