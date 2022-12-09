@@ -3,3 +3,4 @@ function equation_p1(τ, g, Ψ, Minv)
     f = Ψ'*g
     p = -(g - Ψ*(Z\f)) / τ
     return p
+end
