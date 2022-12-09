@@ -11,7 +11,7 @@ batch_size = 100
 κ = 0.01
 # -------------------------------------------------------------
 # máximo número de iteraciones
-nIter = 300
+nIter = 500
 # -------------------------------------------------------------
 # datos iniciales
 n_samples = 500
@@ -42,31 +42,34 @@ println("Optimización por métodos de primer orden")
 # First order methods
 include("methods_1order.jl")
 Θ_GD = GD(θ, grad_exp, f_params, nIter, α)
-println("GD, Inicio: $(Θ_GD[1:end,1]), Fin: $(Θ_GD[1:end,end]), Pasos: $(size(Θ_GD, 2)-1)")
+println("GD, Inicio: $(Θ_GD[1:end,1]), Fin: $(Θ_GD[1:end,end]), Pasos: $(size(Θ_GD, 2)-1), f(x)=$(func_exp(Θ_GD[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_GD[1:end,end], f_params...))")
 
 Θ_SGD = SGD(θ, grad_exp, f_params, nIter, α, batch_size)
-println("SGD, Inicio: $(Θ_SGD[1:end,1]), Fin: $(Θ_SGD[1:end,end]), Pasos: $(size(Θ_SGD, 2)-1)")
+println("SGD, Inicio: $(Θ_SGD[1:end,1]), Fin: $(Θ_SGD[1:end,end]), Pasos: $(size(Θ_SGD, 2)-1), f(x)=$(func_exp(Θ_SGD[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_SGD[1:end,end], f_params...))")
 
 Θ_MGD = MGD(θ, grad_exp, f_params, nIter, α, η)
-println("MGD, Inicio: $(Θ_MGD[1:end,1]), Fin: $(Θ_MGD[1:end,end]), Pasos: $(size(Θ_MGD, 2)-1)")
+println("MGD, Inicio: $(Θ_MGD[1:end,1]), Fin: $(Θ_MGD[1:end,end]), Pasos: $(size(Θ_MGD, 2)-1), f(x)=$(func_exp(Θ_MGD[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_MGD[1:end,end], f_params...))")
 
 Θ_NAG = NAG(θ, grad_exp, f_params, nIter, α, η)
-println("NAG, Inicio: $(Θ_NAG[1:end,1]), Fin: $(Θ_NAG[1:end,end]), Pasos: $(size(Θ_NAG, 2)-1)")
+println("NAG, Inicio: $(Θ_NAG[1:end,1]), Fin: $(Θ_NAG[1:end,end]), Pasos: $(size(Θ_NAG, 2)-1), f(x)=$(func_exp(Θ_NAG[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_NAG[1:end,end], f_params...))")
 
-#=
-ThetaADADELTA = ADADELTA(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
-print('ADADELTA, Inicio:', theta,'-> Fin:', ThetaADADELTA[-1,:])
+#α = 0.7
+#Θ_ADADELTA = ADADELTA(θ, grad_exp, f_params, nIter, α, η)
+#println("ADADELTA, Inicio: $(Θ_ADADELTA[1:end,1]), Fin: $(Θ_ADADELTA[1:end,end]), Pasos: $(size(Θ_ADADELTA, 2)-1), f(x)=$(func_exp(Θ_ADADELTA[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_ADADELTA[1:end,end], f_params...))")
 
-ThetaADAM = ADAM(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
-print('ADAM, Inicio:', theta,'-> Fin:', ThetaADAM[-1,:])
-=#
+α = 0.95
+η1 = 0.9
+η2 = 0.999
+θ_ADAM = ADAM(θ, grad_exp, f_params, nIter, α, η1, η2)
+println("ADAM, Inicio: $(θ_ADAM[1:end,1]), Fin: $(θ_ADAM[1:end,end]), Pasos: $(size(θ_ADAM, 2)-1), f(x)=$(func_exp(θ_ADAM[1:end,end], f_params...)), ∇(x)=$(grad_exp(θ_ADAM[1:end,end], f_params...))")
+
 println("Done!")
 
 include("methods_2order.jl")
 println("Optimización por métodos de segundo orden")
 # Second order methods
 Θ_SR1TR = LSR1TR(θ, func_exp, grad_exp, f_params, nIter, α, batch_size)
-println("SR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Pasos: $(size(Θ_SR1TR, 2)-1)")
+println("SR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Pasos: $(size(Θ_SR1TR, 2)-1), f(x)=$(func_exp(Θ_SR1TR[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_SR1TR[1:end,end], f_params...))")
 
 #=
 Tmax=100
