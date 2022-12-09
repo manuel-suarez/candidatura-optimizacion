@@ -21,7 +21,7 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
     skip        = 0;
     k           = 0;
     epoch_k     = 0;
-    Θ = Vector{Float64}()
+    Θ = θ
     
     for iter in 1:nIter
         #= println("=======================> Iteración $(iter), k=$(k) <==================="); =#
@@ -60,7 +60,7 @@ function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
             f = f_new
             g = g_new
         end
-        append!(Θ, θ)
+        Θ = hcat(Θ, θ)
 
         # Condición de paro
         if llgll < tol

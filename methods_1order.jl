@@ -6,7 +6,7 @@ using MLJBase
 using Random
 using Plots
 
-function GD(θ0, grad, f_params, nIter, α)    
+function GD(θ, grad, f_params, nIter, α)    
     #=
     Descenso de gradiente
 
@@ -27,19 +27,18 @@ function GD(θ0, grad, f_params, nIter, α)
     -----------
     Θ     :   trayectoria de los parametros    
     =#
-    θ = θ0
-    Θ = Vector{Float64}()
+    Θ = θ
     for iter in 1:nIter
         p = grad(θ, f_params...)
         θ = θ - α * p
-        append!(Θ, θ)
+        Θ = hcat(Θ, θ)        
     end
     return Θ
 end
 
 #= Descenso de gradiente estocástico =#
 function SGD(θ, grad, f_params, nIter, α, batch_size)
-    Θ = []
+    Θ = θ
     for iter in 1:nIter
         # Obtenemos la muestra de tamaño (batch size)
         idxs = sample(axes(f_params.Xt, 1), batch_size)
@@ -50,7 +49,7 @@ function SGD(θ, grad, f_params, nIter, α, batch_size)
         f_params_sample = (Xt=Xt_sample, yt=yt_sample, κ=f_params.κ)
         p = grad(θ, f_params_sample...)
         θ = θ - α * p
-        append!(Θ, θ)
+        Θ = hcat(Θ, θ)
     end
     return Θ
 end
@@ -58,13 +57,13 @@ end
 #= Descenso de gradiente con momento (inercia) =#
 function MGD(θ, grad, f_params, nIter, α, η)
     p_old = zeros(size(θ))
-    Θ = []
+    Θ = θ
     for iter in 1:nIter
         g = grad(θ, f_params...)
         p = g + η * p_old
         θ = θ - α * p
         p_old = p
-        append!(Θ, θ)
+        Θ = hcat(Θ, θ)
     end
     return Θ
 end
@@ -72,14 +71,14 @@ end
 #= Descenso acelerado de Nesterov =#
 function NAG(θ, grad, f_params, nIter, α, η)
     p = zeros(size(θ))
-    Θ = []
+    Θ = θ
 
     for iter in 1:nIter
         pre_θ = θ - 2.0 * α * p
         g = grad(pre_θ, f_params...)
         p = g + η * p
         θ = θ - α * p
-        append!(Θ, θ)
+        Θ = hcat(Θ, θ)
     end
     return Θ
 end
