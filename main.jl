@@ -60,6 +60,12 @@ print('ADAM, Inicio:', theta,'-> Fin:', ThetaADAM[-1,:])
 =#
 println("Done!")
 
+include("methods_2order.jl")
+println("Optimización por métodos de segundo orden")
+# Second order methods
+Θ_SR1TR = LSR1TR(θ, func_exp, grad_exp, f_params, nIter, α, batch_size)
+println("SR1-TR, Inicio: $(Θ_SR1TR[1,:]), -> Fin: $(Θ_SR1TR[end,:])")
+
 #=
 Tmax=100
 plt.figure(figsize=(10,10))

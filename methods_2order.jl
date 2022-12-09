@@ -1,12 +1,14 @@
 # Implementación de métodos de segundo orden
+using LinearAlgebra
+using Statistics
+using MLJBase
 
-
-function LSR1TR(θ, grad, f_params, nIter, α, batch_size)
+function LSR1TR(θ, func, grad, f_params, nIter, α, batch_size)
     S           = [];
     Y           = [];
 
     tol         = 1e-5;
-    delta           = 1;
+    delta       = 1;
     γ           = 1;
 
     epoch       = 10;
@@ -16,10 +18,10 @@ function LSR1TR(θ, grad, f_params, nIter, α, batch_size)
     skip        = 0;
     k           = 0;
     epoch_k     = 0;
-    while true
-        println("=======================> Iteración $(k) <===================");
-        f           = func(w, pX, py)
-        g           = grad(w, pX, py)
+    for iter in 1:nIter
+        println("=======================> Iteración $(iter) <===================");
+        f           = func(θ, pX, py)
+        g           = grad(θ, pX, py)
         llgll       = norm(g)
 
         # Trust-Region subproblem
@@ -111,6 +113,6 @@ function LSR1TR(θ, grad, f_params, nIter, α, batch_size)
             end
         end
 
-        global k = k + 1;
+        k = k + 1;
     end
 end
