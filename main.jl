@@ -40,17 +40,18 @@ println("∇ =$(g): size=$(size(g)), typeof=$(typeof(g))")
 f_params = (Xt=Xt.x1, yt=yt, κ=κ)
 println("Optimización por métodos de primer orden")
 # First order methods
+include("methods_1order.jl")
 Θ_GD = GD(θ, grad_exp, f_params, nIter, α)
-println("GD, Inicio: $(Θ_GD[1,:]), -> Fin: $(Θ_GD[end,:])")
+println("GD, Inicio: $(Θ_GD[1:end,1]), Fin: $(Θ_GD[1:end,end]), Pasos: $(size(Θ_GD, 2)-1)")
 
 Θ_SGD = SGD(θ, grad_exp, f_params, nIter, α, batch_size)
-println("SGD, Inicio: $(Θ_SGD[1,:]), -> Fin: $(Θ_SGD[end,:])")
+println("SGD, Inicio: $(Θ_SGD[1:end,1]), Fin: $(Θ_SGD[1:end,end]), Pasos: $(size(Θ_SGD, 2)-1)")
 
 Θ_MGD = MGD(θ, grad_exp, f_params, nIter, α, η)
-println("MGD, Inicio: $(Θ_MGD[1,:]), -> Fin: $(Θ_MGD[end,:])")
+println("MGD, Inicio: $(Θ_MGD[1:end,1]), Fin: $(Θ_MGD[1:end,end]), Pasos: $(size(Θ_MGD, 2)-1)")
 
 Θ_NAG = NAG(θ, grad_exp, f_params, nIter, α, η)
-println("NAG, Inicio: $(Θ_NAG[1,:]), -> Fin: $(Θ_NAG[end,:])")
+println("NAG, Inicio: $(Θ_NAG[1:end,1]), Fin: $(Θ_NAG[1:end,end]), Pasos: $(size(Θ_NAG, 2)-1)")
 
 #=
 ThetaADADELTA = ADADELTA(theta=theta, grad=grad_exp, gd_params=gd_params, f_params=f_params)
@@ -65,7 +66,7 @@ include("methods_2order.jl")
 println("Optimización por métodos de segundo orden")
 # Second order methods
 Θ_SR1TR = LSR1TR(θ, func_exp, grad_exp, f_params, nIter, α, batch_size)
-println("SR1-TR, Inicio: $(Θ_SR1TR[1,:]), -> Fin: $(Θ_SR1TR[end,:])")
+println("SR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Pasos: $(size(Θ_SR1TR, 2)-1)")
 
 #=
 Tmax=100
