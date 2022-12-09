@@ -1,3 +1,4 @@
+include("phi_phiprim.jl")
 function newton_method(σ_0, Δ, a, λ)
     newton_tol      = 1e-10
     newton_maxit    = 100
@@ -10,4 +11,5 @@ function newton_method(σ_0, Δ, a, λ)
         ϕ, ϕ_prim = phi_phiprim(σ, Δ, a, λ)
         k = k + 1
     end
+    return σ
 end
