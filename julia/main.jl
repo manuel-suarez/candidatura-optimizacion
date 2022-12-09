@@ -11,6 +11,7 @@ using MLJBase
 α = 0.95
 η = 0.9
 μ = 0.9
+τ = 0.8
 batch_size = 300
 # -------------------------------------------------------------
 # parámetros de la función objetivo
@@ -69,6 +70,8 @@ println("SR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Paso
 Θ_SSR1TR = LSSR1TR(θ, func_exp, grad_exp, f_params, nIter, α, μ, batch_size)
 println("SSR1-TR, Inicio: $(Θ_SR1TR[1:end,1]), Fin: $(Θ_SR1TR[1:end,end]), Pasos: $(size(Θ_SR1TR, 2)-1), f(x)=$(func_exp(Θ_SR1TR[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_SR1TR[1:end,end], f_params...))")
 
+Θ_MBSR1TR = MBSR1TR(θ, func, grad, f_params, nIter, α, μ, τ, batch_size)
+println("MBSTR1-TR, Inicio: $(Θ_MBSR1TR[1:end,1]), Fin: $(Θ_MBSR1TR[1:end,end]), Pasos: $(size(Θ_MBSR1TR, 2)-1), f(x)=$(func_exp(Θ_MBSR1TR[1:end,end], f_params...)), ∇(x)=$(grad_exp(Θ_MBSR1TR[1:end,end], f_params...))")
 #=
 Tmax=100
 plt.figure(figsize=(10,10))

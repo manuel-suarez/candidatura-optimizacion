@@ -297,7 +297,7 @@ end
     así como un factor de tolerancia para hacer un reset completo a los vectores de curvatura, esto debe permitir hacer una
     corrección en el cálculo del gradiente para la búsqueda de la dirección de optimización.
 """
-function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, batch_size)
+function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, τ, batch_size)
     S           = [];
     Y           = [];
     Ψ           = [];
@@ -310,9 +310,12 @@ function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, batch_size)
     epoch       = 10;
     lim_m       = 20;
     os          = 50;
+    ρ_hat       = 1;    # Parámetros de actualización de la región de confianza
+    T           = 1;    # Parámetros de actualización de la región de confianza
 
     skip        = 0;
     k           = 0;
+    K           = 50;   # Corrección del tamaño de lote
     v_old       = 0;
     epoch_k     = 0;
     Θ           = θ;
@@ -328,7 +331,7 @@ function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, batch_size)
         yt_sample = f_params.yt[idxs]
         # parametros de la funcion objetivo
         f_params_sample = (Xt=Xt_sample, yt=yt_sample, κ=f_params.κ)
-        
+    
         f           = func(θ, f_params_sample...)
         g           = grad(θ, f_params_sample...)
         llgll       = norm(g)
@@ -366,6 +369,7 @@ function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, batch_size)
 
         # Condición de aceptación del incremento
         θ_old = θ # Para cálculo de factor de ajuste sobre el gradiente direccional
+        f_old = f # Para corrección del tamaño de paso
         θ = θ_new
         f = f_new
         g = g_new
@@ -376,7 +380,36 @@ function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, batch_size)
             return
         end
 
+        # Corrección de tamaño de paso de acuerdo con el incremento obtenido y el coeficiente de reset
+        R_k = f - f_old
+        if mod(k, K) == 0
+            # Obtenemos nuevo batch y evaluamos
+            idxs = sample(axes(f_params.Xt, 1), batch_size)
+            # sample
+            Xt_sample = f_params.Xt[idxs]
+            yt_sample = f_params.yt[idxs]
+            # parametros de la funcion objetivo
+            f_params_sample = (Xt=Xt_sample, yt=yt_sample, κ=f_params.κ)
+            f_k = func(θ, f_params_sample...)
+            if f_k - f ≥ -γ1 + γ2 * sum(R_k)
+                # Ajuste del tamaño de paso y parámetro de ajuste del región de confianza
+                nIter = min(2 * nIter, N)
+                if nIter == N
+                    ζ = 0
+                end
+            end        
+        end
+
         # Actualización del radio de la región de confianza
+        ρ_hat = ζ*T*ρ_hat + ρ
+        T     = ζ*T + 1
+        ρ_hat = ρ_hat / T
+        if ρ_hat < 0.1
+            delta = min(delta, norm(s))
+        elseif ρ_hat ≥ 0.5 && norm(s) ≥ delta
+            delta = 2*delta
+        end
+        #= Actualización clásica
         if ρ > 0.75
             if norm(p) ≤ 0.8*delta
                 delta_new = delta
@@ -389,52 +422,67 @@ function MBSR1TR(θ, func, grad, f_params, nIter, α, μ, batch_size)
             delta_new = 0.5*delta
         end
         delta = delta_new
+        =#
 
-        # Condición de Actualización
-        y_Bs        = y - Bp
-        if abs((s'*y_Bs)[]) > 1e-8*llpll*norm(y_Bs)
-            #println("Curvature pairs")
-            if k == 0
-                S = s
-                Y = y
-            else
-                S = [S s]
-                Y = [Y y]
+        # Actualización de S, Y (Algoritmo 3)
+        if ρ < τ && k > 0
+            if k == lim_m
+                # Generamos conjunto de muestras en una región alrededor de la estimación actual de parámetros
+                # para la conformación de los vectores de curvatura s, y
+                
+            elseif k == 0
+                # Restart
+                S = []
+                Y = []
+                k = 0
             end
-            if (size(S,2) > lim_m)
-                S = S[:, 2:end]
-                Y = Y[:, 2:end]
-            end
-
-            if size(S,2) == 0
-                println("S is empty!")
-            end
-
-            while (size(S, 2) > 0)                
-                SY      = S'*Y
-                SS      = S'*S
-                if size(SY) == ()
-                    LDLt = SY
+        else
+            # Classic S, Y update
+            y_Bs        = y - Bp
+            if abs((s'*y_Bs)[]) > 1e-8*llpll*norm(y_Bs)
+                #println("Curvature pairs")
+                if k == 0
+                    S = s
+                    Y = y
                 else
-                    LDLt = tril(SY) + tril(SY,-1)'
+                    S = [S s]
+                    Y = [Y y]
                 end
-                eig_val = eigen(LDLt,SS).values
-                λHat_min= minimum(eig_val)
-                if λHat_min > 0
-                    γ   = max(0.5*λHat_min, 1e-6)
-                else
-                    γ   = min(1.5*λHat_min, -1e-6)
-                end
-
-                Minv    = (LDLt - γ*SS)
-                Ψ       = Y - γ*S
-
-                if size(Ψ,2) == rank(Ψ) && rank(Minv) == size(Minv,2)
-                    break
-                else
-                    #println("Psi is NOT full column rank! or M is not invertible!")
+                if (size(S,2) > lim_m)
                     S = S[:, 2:end]
                     Y = Y[:, 2:end]
+                end
+
+                if size(S,2) == 0
+                    println("S is empty!")
+                end
+
+                while (size(S, 2) > 0)                
+                    SY      = S'*Y
+                    SS      = S'*S
+                    if size(SY) == ()
+                        LDLt = SY
+                    else
+                        LDLt = tril(SY) + tril(SY,-1)'
+                    end
+                    eig_val = eigen(LDLt,SS).values
+                    λHat_min= minimum(eig_val)
+                    if λHat_min > 0
+                        γ   = max(0.5*λHat_min, 1e-6)
+                    else
+                        γ   = min(1.5*λHat_min, -1e-6)
+                    end
+
+                    Minv    = (LDLt - γ*SS)
+                    Ψ       = Y - γ*S
+
+                    if size(Ψ,2) == rank(Ψ) && rank(Minv) == size(Minv,2)
+                        break
+                    else
+                        #println("Psi is NOT full column rank! or M is not invertible!")
+                        S = S[:, 2:end]
+                        Y = Y[:, 2:end]
+                    end
                 end
             end
         end
